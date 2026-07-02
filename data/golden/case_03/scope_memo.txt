@@ -1,0 +1,5 @@
+FY2025 IT Audit Scope — ACME Corp
+
+1. SAP S/4HANA is newly in scope from 1 March 2025 following the ERP migration.
+2. The legacy payroll system (HR-Legacy) has been decommissioned as of 31 December 2024.
+3. UAR sample sizes have been increased from 25 to 40 per the updated sampling methodology.

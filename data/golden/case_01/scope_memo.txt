@@ -1,0 +1,3 @@
+FY2025 IT Audit Scope — ACME Corp
+
+Scope for FY2025 is unchanged from FY2024. Oracle EBS remains the only in-scope application. No regulatory changes affect scope.

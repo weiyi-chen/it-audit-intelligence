@@ -1,0 +1,3 @@
+FY2025 IT Audit Scope — ACME Corp
+
+Effective 1 January 2025, SAP S/4HANA has replaced Oracle EBS for core finance. SAP S/4HANA is now in scope for all ITGC areas. Oracle EBS remains in scope for legacy transactions through Q1 2025.

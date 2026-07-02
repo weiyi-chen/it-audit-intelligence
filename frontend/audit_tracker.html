@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Audit Intelligence Tracker — IT Audit Intelligence</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0f1623;color:#e2e8f0;height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:13px}
+/* ── Standard nav bar (matches Module A / B) ─── */
+.nav{background:#1a2035;color:#fff;display:flex;align-items:center;gap:10px;padding:12px 24px;font-size:14px;flex-shrink:0;border-bottom:1px solid #1e2d45}
+.nav .logo{font-weight:700;font-size:16px;color:#7eb8f7;text-decoration:none}
+.nav .sep{color:#4a5568;margin:0 2px}
+.nav .back-link{display:flex;align-items:center;gap:5px;padding:3px 10px;border-radius:6px;border:1px solid #3a4d70;background:#2d3a55;color:#94b8d8;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s}
+.nav .back-link:hover{background:#3a4d70;color:#fff}
+.nav .page-title{color:#cbd5e1;font-size:13px}
+.nav .engagement{font-size:11px;color:#64748b;border-left:1px solid #334155;padding-left:12px;margin-left:4px}
+.nav .badge{background:#2d3a55;border:1px solid #3a4d70;border-radius:4px;padding:2px 8px;font-size:11px;color:#a0b4d0}
+/* ── Context banner (from Module B) ─────────── */
+.ctx-banner{display:none;align-items:center;gap:10px;padding:8px 24px;background:#1e2d45;border-bottom:1px solid #2a3d60;font-size:12px;color:#7eb8f7;flex-shrink:0}
+.ctx-banner .ctx-icon{font-size:14px}
+.ctx-banner .ctx-text{flex:1}
+.ctx-banner .ctx-back{padding:3px 10px;border-radius:5px;border:1px solid #3a5070;background:transparent;color:#5a8aaa;font-size:11px;cursor:pointer;text-decoration:none;transition:all .12s}
+.ctx-banner .ctx-back:hover{background:#1e3a5a;color:#7eb8f7}
+/* ── Progress strip ──────────────────────────── */
+.overall-prog{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:11px;color:#5a7090}
+.prog-bar-wrap{width:120px;height:6px;background:#334155;border-radius:3px;overflow:hidden}
+.prog-bar{height:100%;background:linear-gradient(90deg,#4a86c8,#2d5fa0);border-radius:3px;transition:width .4s}
+.layout{display:flex;flex:1;overflow:hidden}
+.sidebar{width:210px;background:#111926;border-right:1px solid #1e2d45;overflow-y:auto;flex-shrink:0}
+.sb-section{padding:10px 0}
+.sb-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#3a5070;padding:0 12px 6px}
+.sb-item{padding:8px 12px;cursor:pointer;border-left:3px solid transparent;transition:all .12s;display:flex;flex-direction:column;gap:3px}
+.sb-item:hover{background:#1a2438}
+.sb-item.active{background:#182540;border-left-color:#4a86c8}
+.sb-item-top{display:flex;align-items:center;gap:7px}
+.sb-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sb-name{font-size:12.5px;font-weight:600;flex:1}
+.sb-prog-row{display:flex;align-items:center;gap:6px;padding-left:15px}
+.sb-mini-bar{flex:1;height:3px;background:#1e2d45;border-radius:2px;overflow:hidden}
+.sb-mini-fill{height:100%;border-radius:2px;transition:width .3s}
+.sb-pct{font-size:10px;color:#4a6080;width:26px;text-align:right}
+.main{flex:1;overflow-y:auto;padding:20px 24px}
+.meeting-header{margin-bottom:20px}
+.mh-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+.mh-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.mh-name{font-size:18px;font-weight:700;margin-bottom:2px}
+.mh-sub{font-size:12px;color:#5a7090}
+.mh-domains{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.domain-chip{padding:2px 8px;border-radius:10px;font-size:10.5px;font-weight:600;background:#1e2d45;color:#7eb8f7;border:1px solid #2a3d55}
+.domain-chip.new-chip{background:#1e3820;color:#4ade80;border-color:#2a5030}
+.section{margin-bottom:22px}
+.section-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #1a2438}
+.section-icon{font-size:14px}
+.section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#5a7090}
+.section-count{margin-left:auto;font-size:11px;padding:1px 7px;border-radius:8px;background:#1e2d45;color:#5a7090}
+.section-count.s-done{background:#1e3820;color:#4ade80}
+.qcard{background:#141d2e;border:1px solid #1e2d45;border-radius:8px;margin-bottom:8px;overflow:hidden;transition:border-color .15s}
+.qcard.status-asked{border-left:3px solid #4ade80}
+.qcard.status-noted{border-left:3px solid #f59e0b}
+.qcard.status-pending{border-left:3px solid #374151}
+.qcard-top{display:flex;align-items:flex-start;gap:10px;padding:10px 12px}
+.status-circle{width:18px;height:18px;border-radius:50%;border:2px solid #2a3d55;background:transparent;display:flex;align-items:center;justify-content:center;font-size:9px;cursor:pointer;transition:all .15s;flex-shrink:0;margin-top:1px}
+.status-circle.done{background:#4ade80;border-color:#4ade80;color:#000}
+.status-circle.noted{background:#f59e0b;border-color:#f59e0b;color:#000}
+.qcard-body{flex:1}
+.qcard-q{font-size:13px;line-height:1.5;color:#d0dce8}
+.qcard-meta{display:flex;gap:8px;margin-top:5px;flex-wrap:wrap}
+.qmeta-tag{font-size:10px;padding:1px 7px;border-radius:8px;font-weight:600}
+.tag-prior{background:#2a2520;color:#b08050;border:1px solid #3a3020;opacity:.7}
+.tag-new{background:#1e3820;color:#4ade80;border:1px solid #2a5030}
+.tag-cross{background:#1e2a40;color:#7eb8f7;border:1px solid #2a3a55}
+.tag-risk{background:#3a1e1e;color:#f87171;border:1px solid #5a2a2a}
+.prior-note{margin-top:6px;padding:6px 10px;background:#1a1810;border-radius:5px;border-left:2px solid #7a5020;font-size:11.5px;color:#a08060;line-height:1.5}
+.prior-note-lbl{font-size:10px;font-weight:700;color:#7a5020;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px}
+.cross-note{margin-top:6px;padding:6px 10px;background:#1a2030;border-radius:5px;border-left:2px solid #4a6090;font-size:11.5px;color:#7a9ab8;line-height:1.5}
+.cross-note-lbl{font-size:10px;font-weight:700;color:#4a6090;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px}
+.qcard-actions{display:flex;gap:6px;padding:0 12px 8px 40px}
+.act-btn{padding:3px 10px;border-radius:5px;border:1px solid #2a3d55;background:transparent;color:#5a7090;font-size:11px;cursor:pointer;transition:all .12s}
+.act-btn:hover{background:#1e2d45;color:#e2e8f0}
+.act-btn.active-ask{background:#1e3820;border-color:#4ade80;color:#4ade80}
+.act-btn.active-noted{background:#3a2e10;border-color:#f59e0b;color:#f59e0b}
+.note-area{margin:0 12px 10px 40px}
+.note-area textarea{width:100%;background:#0f1623;border:1px solid #2a3d55;border-radius:6px;color:#d0dce8;font-size:12px;padding:8px;resize:vertical;min-height:60px;font-family:inherit;line-height:1.5}
+.note-area textarea:focus{outline:none;border-color:#4a86c8}
+.note-area textarea::placeholder{color:#2a3d55}
+.empty-state{text-align:center;padding:60px 20px;color:#2a3d55}
+.empty-state div:first-child{font-size:36px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a class="logo" href="index.html">IT Audit Intelligence</a>
+  <span class="sep">›</span>
+  <a class="back-link" href="it_understanding.html" id="nav-back-btn">← IT Understanding</a>
+  <span class="sep">›</span>
+  <span class="page-title">Module C — Walkthrough Tracker</span>
+  <span class="engagement">ACME Corp · FY2025</span>
+  <div class="overall-prog">
+    <span id="overall-label">0 / 0 covered</span>
+    <div class="prog-bar-wrap"><div class="prog-bar" id="overall-bar" style="width:0%"></div></div>
+    <span id="overall-pct">0%</span>
+  </div>
+  <span class="badge">Module C</span>
+</nav>
+<div class="ctx-banner" id="ctx-banner">
+  <span class="ctx-icon">📍</span>
+  <span class="ctx-text" id="ctx-text">Coming from Module B</span>
+  <a class="ctx-back" href="it_understanding.html" id="ctx-back-link">← Back to IT Landscape</a>
+</div>
+<div class="layout">
+  <div class="sidebar">
+    <div class="sb-section">
+      <div class="sb-title">Stakeholders</div>
+      <div id="sb-persons"></div>
+    </div>
+  </div>
+  <div class="main" id="main-panel">
+    <div class="empty-state">
+      <div>📋</div>
+      <div>Select a stakeholder to see<br>their question bank &amp; progress</div>
+    </div>
+  </div>
+</div>
+<script>
+/* ── Read URL params from Module B and show context banner ── */
+(function(){
+  const p = new URLSearchParams(window.location.search);
+  const person = p.get('person'), sys = p.get('sys'), area = p.get('area');
+  const sysLabels = {sap:'SAP S/4HANA',oracle:'Oracle EBS',workday:'Workday',servicenow:'ServiceNow',azuread:'Azure AD'};
+  const areaLabels = {batch:'Batch Jobs',change:'Change Mgmt',dev:'Dev Management',jml:'Access Provisioning (JML)',priv:'Privileged Access',uar:'User Access Review',auth:'Authentication',overview:'System Overview'};
+  if(person || sys || area){
+    const banner = document.getElementById('ctx-banner');
+    const text   = document.getElementById('ctx-text');
+    const backLink = document.getElementById('ctx-back-link');
+    const parts = [];
+    if(sys)    parts.push(`<strong>${sysLabels[sys]||sys}</strong>`);
+    if(area)   parts.push(`<strong>${areaLabels[area]||area}</strong>`);
+    const personLabel = person ? ` — <strong style="color:#7eb8f7">${person}</strong>` : '';
+    text.innerHTML = `Continuing from Module B — IT Understanding Map${personLabel}${parts.length ? ' · ' + parts.join(' › ') : ''}`;
+    backLink.href = `it_understanding.html`;
+    banner.style.display = 'flex';
+    window._ctxPerson = person;
+    window._ctxSys    = sys;
+    window._ctxArea   = area;
+  }
+})();
+
+const MEETINGS=[
+  // ── David Chen · IT Director · ACME Corp ──────────────────────────────────
+  {id:"david",name:"David Chen",role:"IT Director",org:"ACME Corp",icon:"👔",color:"#7c3aed",
+   domains:["IT Understanding","Major Developments","Third-Party Risk","AI Governance","Change Mgmt"],
+   newDomains:["Major Developments","AI Governance"],
+   questions:[
+    {id:"dav1",type:"prior",domain:"IT Understanding",q:"Updated system landscape: full inventory of in-scope applications, hosting (cloud/on-prem/SaaS), owners, and key vendors.",priorNote:"FY2024: inventory was provided but missing 2 SaaS tools used by Finance. Ensure Finance sub-systems are included this year.",tags:[]},
+    {id:"dav2",type:"new",domain:"Major Developments",q:"SAP S/4HANA migration: confirm go-live date, parallel-run period end, which processes migrated. Is Oracle EBS fully decommissioned or still running in parallel?",priorNote:"",tags:["new"]},
+    {id:"dav3",type:"new",domain:"AI Governance",q:"Is there a documented AI governance / acceptable use policy? Who approved it and when? Any model risk management framework in place?",priorNote:"FY2024 observation: no formal AI policy existed. Management committed to drafting one in FY2025.",tags:["new","risk"]},
+    {id:"dav4",type:"new",domain:"AI Governance",q:"Which business units have deployed AI tools independently (shadow AI)? Is there a central register of approved AI tools?",priorNote:"",tags:["new","cross"],crossNote:"Cross-reference with Lisa Park (SIEM monitoring for AI) and Finance teams (FP&A AI tools)."},
+    {id:"dav5",type:"prior",domain:"Third-Party Risk",q:"Vendor register: top 5 critical vendors by system dependency — BCP tested jointly with them? Any single points of failure identified?",priorNote:"FY2024: no formal vendor criticality ranking existed. Flagged as a process gap.",tags:[]},
+    {id:"dav6",type:"new",domain:"Major Developments",q:"Any planned major developments for the rest of FY2025? Cloud migrations, new acquisitions, additional system retirements?",priorNote:"",tags:["new"]}
+  ]},
+  // ── Emma Walsh · SAP Basis Lead · Accenture ───────────────────────────────
+  {id:"emma",name:"Emma Walsh",role:"SAP Basis Lead",org:"Accenture",icon:"🔧",color:"#1e3a8a",
+   domains:["SAP Batch Jobs","SAP Change Mgmt","SAP Dev Management","SAP Privileged Access","Third-Party (SOC 2)"],
+   newDomains:["SAP Privileged Access","Third-Party (SOC 2)"],
+   questions:[
+    {id:"em1",type:"new",domain:"SAP Change Mgmt",q:"SAP transport/change process: how are transports moved Dev→QA→Prod? Who approves each stage? What's the emergency transport procedure?",priorNote:"",tags:["new"]},
+    {id:"em2",type:"new",domain:"SAP Privileged Access",q:"SAP privileged access: SAP_ALL / SAP_NEW profile usage — who holds them? Are firefighter/emergency IDs in use and who reviews the log?",priorNote:"",tags:["new","risk"]},
+    {id:"em3",type:"prior",domain:"SAP Batch Jobs",q:"SAP batch job scheduling: who schedules jobs, how are failures escalated, what is the job log retention period?",priorNote:"FY2024: no documented escalation path for batch failures — handled informally by Basis team.",tags:[]},
+    {id:"em4",type:"new",domain:"Third-Party (SOC 2)",q:"Accenture SOC 2 Type II report for FY2025: has it been obtained? Does scope cover SAP Basis, infrastructure, and development services? Any exceptions?",priorNote:"",tags:["new","risk"]},
+    {id:"em5",type:"new",domain:"SAP Dev Management",q:"SAP development standards: are all ABAP code changes peer-reviewed? Is there a code quality / security scan in the transport chain?",priorNote:"",tags:["new"]}
+  ]},
+  // ── James Okafor · Oracle DBA · ACME Corp ────────────────────────────────
+  {id:"james",name:"James Okafor",role:"Oracle DBA",org:"ACME Corp",icon:"🗄️",color:"#14532d",
+   domains:["Oracle Batch Jobs","Oracle Dev & Patching","Oracle Privileged Access","Oracle Backup"],
+   newDomains:["Oracle Dev & Patching"],
+   questions:[
+    {id:"ja1",type:"prior",domain:"Oracle Privileged Access",q:"DBA account inventory: number of active DBA accounts, any shared credentials, last formal review date.",priorNote:"FY2024: 3 shared service accounts with DBA-level rights identified. Confirm remediation status.",tags:["risk"]},
+    {id:"ja2",type:"prior",domain:"Oracle Dev & Patching",q:"Oracle patch management: FY2025 critical security patches applied on schedule? Evidence of testing before applying to production?",priorNote:"FY2024: 2 critical patches applied > 60 days after release without documented risk acceptance.",tags:[]},
+    {id:"ja3",type:"prior",domain:"Oracle Batch Jobs",q:"Oracle batch job monitoring: scheduler tool used, failure alerting mechanism, who is on-call, log retention.",priorNote:"FY2024: no centralised monitoring — DBA manually checked job status ad-hoc.",tags:["risk"]},
+    {id:"ja4",type:"new",domain:"Oracle Dev & Patching",q:"Oracle EBS decommission plan: what is the timeline for full shutdown? How is historical data being archived or migrated to SAP?",priorNote:"",tags:["new"]},
+    {id:"ja5",type:"prior",domain:"Oracle Backup",q:"Oracle database backup: backup schedule, last tested restore, RTO achieved, and who verifies backup integrity.",priorNote:"FY2024: restore test only validated a partial dataset — full restore not tested.",tags:["risk"]}
+  ]},
+  // ── Priya Sharma · HR Systems Manager · ACME Corp ────────────────────────
+  {id:"priya",name:"Priya Sharma",role:"HR Systems Manager",org:"ACME Corp",icon:"👥",color:"#b45309",
+   domains:["JML (Workday)","UAR (Workday)","Payroll Batch","Third-Party (Payroll Processor)"],
+   newDomains:["Workday Release Management"],
+   questions:[
+    {id:"pr1",type:"prior",domain:"JML (Workday)",q:"Joiner/Mover/Leaver process: HR system of record, how IT is notified (automated feed or manual email?), SLA for access provisioning.",priorNote:"FY2024: notification was manual email — no automated feed. Flagged as process gap.",tags:["risk"]},
+    {id:"pr2",type:"prior",domain:"JML (Workday)",q:"Leaver population FY2025: total leavers, any delayed disable cases, contractor and temp workers included in the process?",priorNote:"FY2024: contractors were excluded from JML — access not formally reviewed on departure.",tags:["risk"]},
+    {id:"pr3",type:"prior",domain:"UAR (Workday)",q:"Workday user access review: who certifies, scope (permanent employees only vs contractors), frequency, evidence of completion.",priorNote:"FY2024: UAR was performed but only covered permanent employees, not contractors.",tags:[]},
+    {id:"pr4",type:"new",domain:"Workday Release Management",q:"Workday bi-annual releases: how are updates tested before going live in production? Who approves the release in UAT?",priorNote:"",tags:["new"]},
+    {id:"pr5",type:"cross",domain:"Third-Party (Payroll Processor)",q:"Payroll processor SOC 1 Type II: obtained for FY2025? Does it cover the full audit period? Any exceptions noted?",priorNote:"",tags:["cross"],crossNote:"Cross-reference with David Chen for vendor register and right-to-audit clause in contract."}
+  ]},
+  // ── Michael Torres · ITSM / ServiceNow Admin · ACME Corp ─────────────────
+  {id:"michael",name:"Michael Torres",role:"ITSM / ServiceNow Admin",org:"ACME Corp",icon:"🎫",color:"#0f766e",
+   domains:["Change Management","ServiceNow Dev","JML Notifications","Incident Management"],
+   newDomains:["Change Management (SAP go-live)"],
+   questions:[
+    {id:"mi1",type:"prior",domain:"Change Management",q:"Change population FY2025: total changes logged, emergency changes count, percentage approved before implementation.",priorNote:"FY2024: 8% emergency changes — above the 5% industry benchmark. Root cause: insufficient testing windows.",tags:[]},
+    {id:"mi2",type:"new",domain:"Change Management",q:"SAP go-live changes: how were migration-related transports and configuration changes handled? All logged through normal CAB?",priorNote:"",tags:["new"]},
+    {id:"mi3",type:"prior",domain:"Change Management",q:"Emergency change process: separate approval path from normal CAB? Who authorises? How is it documented post-implementation?",priorNote:"FY2024: emergency changes lacked consistent post-implementation review documentation.",tags:[]},
+    {id:"mi4",type:"cross",domain:"JML Notifications",q:"ServiceNow JML workflow: does ServiceNow trigger automated provisioning/deprovisioning tickets to IT when HR submits a leaver request?",priorNote:"",tags:["cross"],crossNote:"Cross-reference with Priya Sharma (HR notification process) and Sarah Kim (Azure AD deprovisioning)."},
+    {id:"mi5",type:"prior",domain:"Incident Management",q:"Change-related incidents FY2025: how many incidents were traced back to failed or unauthorised changes? Trend vs FY2024?",priorNote:"FY2024: 4 production incidents traced to change failures — 2 were emergency changes.",tags:[]}
+  ]},
+  // ── Sarah Kim · Identity & Access Manager · ACME Corp ────────────────────
+  {id:"sarah",name:"Sarah Kim",role:"Identity & Access Manager",org:"ACME Corp",icon:"🔐",color:"#5b21b6",
+   domains:["JML (Azure AD)","User Access Review","Privileged Access","Authentication & MFA"],
+   newDomains:["SAP SSO Integration"],
+   questions:[
+    {id:"sa1",type:"prior",domain:"Authentication & MFA",q:"MFA enforcement: which systems require MFA? Any exceptions approved and who authorised them? Contractor accounts included?",priorNote:"FY2024 finding: MFA not enforced on VPN for 12 contractor accounts. This was a management letter point.",tags:["risk"]},
+    {id:"sa2",type:"prior",domain:"JML (Azure AD)",q:"Leaver deprovisioning via Azure AD: average time to disable account after HR offboarding? Automated or manual trigger?",priorNote:"FY2024: average disable time was 4 days after HR offboarding — target is same business day.",tags:["risk"]},
+    {id:"sa3",type:"prior",domain:"User Access Review",q:"Azure AD user access review: scope (all groups or just privileged?), certifier, frequency, evidence retained. Any users failed review and not remediated?",priorNote:"FY2024 (Oracle): 2 users had conflicting access (AP posting + payment approval) — confirmed as Azure AD group membership issue.",tags:[]},
+    {id:"sa4",type:"prior",domain:"Privileged Access",q:"Azure AD privileged account inventory: Global Admins, Application Admins — count, shared accounts, PIM (just-in-time) in use?",priorNote:"FY2024: 3 shared service accounts with admin rights across Azure AD and connected systems. Confirm remediation.",tags:["cross"],crossNote:"Cross-reference with Lisa Park (InfoSec policy for standing admin rights) and Michael Torres (service account remediation status)."},
+    {id:"sa5",type:"new",domain:"SAP SSO Integration",q:"SAP S/4HANA Azure AD SSO integration: how is it configured? Any local SAP accounts that bypass SSO? Emergency break-glass account controls?",priorNote:"",tags:["new"]}
+  ]},
+  // ── Lisa Park · CISO / InfoSec Manager · ACME Corp ───────────────────────
+  {id:"lisa",name:"Lisa Park",role:"CISO / InfoSec Manager",org:"ACME Corp",icon:"🛡️",color:"#be123c",
+   domains:["Cyber Security","Privileged Access Policy","Authentication Standards","Third-Party Risk","AI Governance"],
+   newDomains:["AI Governance"],
+   questions:[
+    {id:"li1",type:"prior",domain:"Cyber Security",q:"SIEM setup: what events are captured, alert thresholds, who reviews daily alerts, and what is the log retention period?",priorNote:"FY2024 finding: alert review was ad-hoc, not daily. Action item: implement daily review log.",tags:["risk"]},
+    {id:"li2",type:"new",domain:"AI Governance",q:"AI/ML tool monitoring: is there SIEM integration or DLP policy covering AI tool usage? Any AI-specific risks or incidents identified in FY2025?",priorNote:"",tags:["new","cross"],crossNote:"Also ask David Chen about the AI governance policy and Priya Sharma about AI use in HR/payroll."},
+    {id:"li3",type:"prior",domain:"Third-Party Risk",q:"Key third-party vendors: do contracts include right-to-audit clauses? Were SOC 2 / SOC 1 reports obtained and reviewed for FY2025?",priorNote:"FY2024: SOC 2 for MSP had a 3-month period gap vs. audit period end.",tags:[]},
+    {id:"li4",type:"new",domain:"Cyber Security",q:"SAP go-live security review: was a security baseline/hardening review completed before go-live? Who signed off? Penetration test performed?",priorNote:"",tags:["new"]},
+    {id:"li5",type:"cross",domain:"Privileged Access Policy",q:"Service account remediation: were the 3 shared admin accounts flagged in FY2024 fully remediated? Evidence of remediation?",priorNote:"FY2024: 3 shared service accounts with admin rights — committed to remediate by Q2 FY2025.",tags:["cross"],crossNote:"Confirm with Sarah Kim (Azure AD) and Emma Walsh (SAP Basis) for system-level evidence."}
+  ]}
+];
+const state={};
+MEETINGS.forEach(m=>m.questions.forEach(q=>{state[q.id]={status:"pending",note:""}}));
+let currentId=null;
+function getProgress(mid){const m=MEETINGS.find(x=>x.id===mid);const done=m.questions.filter(q=>state[q.id].status==="asked"||state[q.id].status==="noted").length;return{done,total:m.questions.length,pct:Math.round(done/m.questions.length*100)}}
+function getOverall(){let done=0,total=0;MEETINGS.forEach(m=>{const p=getProgress(m.id);done+=p.done;total+=p.total});return{done,total,pct:total?Math.round(done/total*100):0}}
+function renderSidebar(){const el=document.getElementById("sb-persons");el.innerHTML="";MEETINGS.forEach(m=>{const p=getProgress(m.id);const div=document.createElement("div");div.className="sb-item"+(currentId===m.id?" active":"");div.innerHTML=`<div class="sb-item-top"><div class="sb-dot" style="background:${m.color}"></div><div style="flex:1;min-width:0"><span class="sb-name">${m.name}</span><div style="font-size:10px;color:#4a6080;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.role}</div></div><span style="font-size:10px;color:#3a5070;flex-shrink:0">${p.done}/${p.total}</span></div><div class="sb-prog-row"><div class="sb-mini-bar"><div class="sb-mini-fill" style="width:${p.pct}%;background:${m.color}88"></div></div><span class="sb-pct">${p.pct}%</span></div>`;div.onclick=()=>{currentId=m.id;renderSidebar();renderMain()};el.appendChild(div)});const ov=getOverall();document.getElementById("overall-label").textContent=`${ov.done} / ${ov.total} covered`;document.getElementById("overall-bar").style.width=ov.pct+"%";document.getElementById("overall-pct").textContent=ov.pct+"%"}
+function renderMain(){const panel=document.getElementById("main-panel");if(!currentId){panel.innerHTML=`<div class="empty-state"><div>📋</div><div>Select a stakeholder to begin</div></div>`;return}const m=MEETINGS.find(x=>x.id===currentId);const p=getProgress(m.id);const prior=m.questions.filter(q=>q.type!=="new");const newQs=m.questions.filter(q=>q.type==="new");const orgBadge=m.org==="ACME Corp"?`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#1e2d45;color:#7a9ab8;font-weight:600">${m.org}</span>`:`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#1a0a30;color:#c4b5fd;font-weight:600">${m.org} (Third Party)</span>`;let html=`<div class="meeting-header"><div class="mh-top"><div class="mh-icon" style="background:${m.color}22;border:1px solid ${m.color}44">${m.icon}</div><div><div class="mh-name">${m.name}</div><div style="font-size:12px;color:#5a7090;margin-bottom:5px">${m.role} · ${orgBadge}</div><div class="mh-sub">${p.done} of ${p.total} questions covered · ${p.pct}% complete</div><div class="mh-domains">${m.domains.map(d=>`<span class="domain-chip${m.newDomains.includes(d)?" new-chip":""}">${m.newDomains.includes(d)?"🆕 ":""}${d}</span>`).join("")}</div></div></div></div>`;
+if(newQs.length){const dn=newQs.filter(q=>state[q.id].status==="asked"||state[q.id].status==="noted").length;html+=`<div class="section"><div class="section-head"><span class="section-icon">🆕</span><span class="section-title">New this year</span><span class="section-count ${dn===newQs.length?"s-done":""}">${dn}/${newQs.length}</span></div>${newQs.map(q=>renderCard(q)).join("")}</div>`}
+const dp=prior.filter(q=>state[q.id].status==="asked"||state[q.id].status==="noted").length;html+=`<div class="section"><div class="section-head"><span class="section-icon">📂</span><span class="section-title">Carry-over from prior year</span><span class="section-count ${dp===prior.length?"s-done":""}">${dp}/${prior.length}</span></div>${prior.map(q=>renderCard(q)).join("")}</div>`;panel.innerHTML=html;panel.querySelectorAll(".act-btn").forEach(btn=>{btn.onclick=e=>{e.stopPropagation();cycleStatus(btn.dataset.qid,btn.dataset.action)}});panel.querySelectorAll("textarea").forEach(ta=>{ta.oninput=()=>{state[ta.dataset.qid].note=ta.value;renderSidebar()}})}
+function renderCard(q){const s=state[q.id];const tags=(q.tags||[]).map(t=>t==="new"?`<span class="qmeta-tag tag-new">🆕 new this year</span>`:t==="risk"?`<span class="qmeta-tag tag-risk">⚠️ prior finding</span>`:t==="cross"?`<span class="qmeta-tag tag-cross">🔗 cross-domain</span>`:"").join("");const sc=s.status==="asked"?"status-asked":s.status==="noted"?"status-noted":"status-pending";const cc=s.status==="asked"?"done":s.status==="noted"?"noted":"";const ct=s.status==="asked"?"✓":s.status==="noted"?"📝":"";const ph=q.priorNote?`<div class="prior-note"><div class="prior-note-lbl">Prior year note</div>${q.priorNote}</div>`:"";const ch=q.crossNote?`<div class="cross-note"><div class="cross-note-lbl">Cross-domain</div>${q.crossNote}</div>`:"";const na=`<div class="note-area" id="nota-${q.id}" style="${s.note?"display:block":"display:none"}"><textarea data-qid="${q.id}" placeholder="Type notes here…">${s.note}</textarea></div>`;return`<div class="qcard ${sc}" id="qcard-${q.id}"><div class="qcard-top"><div class="status-circle ${cc}">${ct}</div><div class="qcard-body"><div class="qcard-q">${q.q}</div><div class="qcard-meta"><span class="qmeta-tag tag-prior">${q.domain}</span>${tags}</div>${ph}${ch}</div></div><div class="qcard-actions"><button class="act-btn ${s.status==="asked"?"active-ask":""}" data-qid="${q.id}" data-action="asked">✓ Asked</button><button class="act-btn ${s.status==="noted"?"active-noted":""}" data-qid="${q.id}" data-action="noted">📝 Note</button><button class="act-btn" data-qid="${q.id}" data-action="reset">Reset</button></div>${na}</div>`}
+function cycleStatus(qid,action){const s=state[qid];if(action==="asked"){s.status=s.status==="asked"?"pending":"asked"}else if(action==="noted"){s.status=s.status==="noted"?"pending":"noted";const na=document.getElementById("nota-"+qid);if(na)na.style.display=s.status==="noted"?"block":"none"}else{s.status="pending";s.note=""}renderSidebar();renderMain()}
+// Auto-select person from URL param (passed from Module B walkthrough links)
+if(window._ctxPerson && MEETINGS.find(m=>m.id===window._ctxPerson)){
+  currentId = window._ctxPerson;
+}
+renderSidebar();
+renderMain();
+</script>
+</body>
+</html>

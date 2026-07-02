@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>IT Audit Intelligence Platform</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0f1623;color:#e2e8f0;min-height:100vh}
+.hero{padding:60px 40px 40px;text-align:center;border-bottom:1px solid #1e2d45}
+.hero h1{font-size:32px;font-weight:800;color:#7eb8f7;margin-bottom:10px}
+.hero p{font-size:15px;color:#5a7090;max-width:560px;margin:0 auto 18px;line-height:1.6}
+.badge-row{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.badge{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#1e2d45;color:#5a7090;border:1px solid #2a3d55}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;padding:40px;max-width:1100px;margin:0 auto}
+.card{background:#141d2e;border:1px solid #1e2d45;border-radius:14px;padding:28px;text-decoration:none;color:inherit;transition:border-color .15s,transform .1s,box-shadow .15s;display:flex;flex-direction:column;gap:14px}
+.card:hover{border-color:#4a86c8;transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,.3)}
+.card-icon{font-size:32px}
+.card-module{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#4a6080}
+.card-name{font-size:19px;font-weight:700;color:#d0dce8}
+.card-desc{font-size:13px;color:#5a7090;line-height:1.6}
+.card-features{display:flex;flex-direction:column;gap:5px;margin-top:4px}
+.feat{display:flex;align-items:flex-start;gap:7px;font-size:12px;color:#7a9ab8}
+.feat::before{content:"›";color:#4a6080;flex-shrink:0;margin-top:1px}
+.card-btn{margin-top:auto;padding:9px 0;background:#1e2d45;border-radius:8px;text-align:center;font-size:13px;font-weight:600;color:#7eb8f7;border:1px solid #2a3d55;transition:background .12s}
+.card:hover .card-btn{background:#1e3a6e;border-color:#4a86c8}
+.card-status{font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;width:fit-content}
+.s-live{background:#1e3820;color:#4ade80;border:1px solid #2a5030}
+.s-proto{background:#2a2010;color:#f59e0b;border:1px solid #4a3010}
+.s-planned{background:#1e2d45;color:#4a6080;border:1px solid #2a3d55}
+</style>
+</head>
+<body>
+<div class="hero">
+  <h1>IT Audit Intelligence</h1>
+  <p>Automate the three most time-intensive parts of an annual IT audit: PBC generation, IT understanding mapping, and walkthrough coverage tracking.</p>
+  <div class="badge-row">
+    <span class="badge">LangGraph</span>
+    <span class="badge">Anthropic Claude</span>
+    <span class="badge">FastAPI</span>
+    <span class="badge">openpyxl</span>
+    <span class="badge">ACME Corp · FY2025</span>
+  </div>
+</div>
+
+<div class="grid">
+  <a class="card" href="pbc.html">
+    <div class="card-icon">📋</div>
+    <div>
+      <div class="card-module">Module A</div>
+      <div class="card-name">PBC Checklist Generator</div>
+    </div>
+    <span class="card-status s-live">✅ Live Demo</span>
+    <div class="card-desc">Upload last year's PBC list and paste the scope memo. Get a colour-coded Excel in seconds — new systems, updated sample sizes, and removed items all flagged automatically.</div>
+    <div class="card-features">
+      <div class="feat">Prior-year carry-over with delta detection</div>
+      <div class="feat">New system template instantiation (SAP, Workday…)</div>
+      <div class="feat">Green / yellow / white / red status coding</div>
+      <div class="feat">5-node LangGraph pipeline with scope diff router</div>
+    </div>
+    <div class="card-btn">Open Module A →</div>
+  </a>
+
+  <a class="card" href="it_understanding.html">
+    <div class="card-icon">🗺️</div>
+    <div>
+      <div class="card-module">Module B</div>
+      <div class="card-name">IT Understanding Map</div>
+    </div>
+    <span class="card-status s-proto">🟡 Prototype</span>
+    <div class="card-desc">Two-layer interactive map — IT Landscape shows all company systems and data flows; drill into any system for structured ITGC walkthrough questions, prior-year findings, and coverage tracking.</div>
+    <div class="card-features">
+      <div class="feat">Full IT landscape with data flow edges</div>
+      <div class="feat">5 in-scope systems × 7 IT areas</div>
+      <div class="feat">Prior-year findings surfaced per area</div>
+      <div class="feat">Question coverage tracker</div>
+    </div>
+    <div class="card-btn">Open Module B →</div>
+  </a>
+
+  <a class="card" href="audit_tracker.html">
+    <div class="card-icon">✅</div>
+    <div>
+      <div class="card-module">Module C</div>
+      <div class="card-name">Walkthrough Tracker</div>
+    </div>
+    <span class="card-status s-proto">🟡 Prototype</span>
+    <div class="card-desc">Per-meeting question bank combining prior-year work paper notes with new questions generated from this year's scope changes. Track coverage across all stakeholders in real time.</div>
+    <div class="card-features">
+      <div class="feat">Prior year findings surfaced per question</div>
+      <div class="feat">New questions auto-generated from scope changes</div>
+      <div class="feat">In-meeting note taking + coverage progress bars</div>
+      <div class="feat">Cross-domain reminders mid-walkthrough</div>
+    </div>
+    <div class="card-btn">Open Module C →</div>
+  </a>
+</div>
+</body>
+</html>

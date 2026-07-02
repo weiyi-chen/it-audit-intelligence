@@ -1,0 +1,44 @@
+# Secrets
+.env
+.mcp.json
+
+# Local agent/tool configuration
+.agents/
+.claude/
+skills-lock.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual env
+venv/
+.venv/
+env/
+
+# LangGraph checkpoints
+checkpoints.db
+checkpoints.db-*
+audit_history.db
+audit_history.db-*
+*.sqlite
+*.sqlite3
+*.db
+*.db-*
+
+# Generated outputs (the kind not meant to be committed)
+output/
+data/output/
+/case_01/
+/case_02/
+/case_03/
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

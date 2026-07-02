@@ -1,0 +1,1879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IT Understanding Map — IT Audit Intelligence</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0f1623;color:#e2e8f0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+    .nav{background:#111926;color:#fff;display:flex;align-items:center;gap:12px;padding:13px 28px;font-size:15px;flex-shrink:0;border-bottom:1px solid #1e2d45}
+    .nav .logo{font-weight:700;font-size:17px;color:#7eb8f7;text-decoration:none}
+    .nav .sep{color:#2a3d55;margin:0 3px}
+    .nav .badge{background:#1e2d45;border:1px solid #2a3d55;border-radius:4px;padding:2px 8px;font-size:12px;color:#7a9ab8;margin-left:auto}
+    .engagement{font-size:12px;color:#4a6080;border-left:1px solid #1e2d45;padding-left:14px;margin-left:8px}
+
+    /* ── View containers ─────────────────────────────── */
+    #view-landscape{display:flex;flex:1;overflow:hidden;min-height:0}
+    #view-detail{display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0}
+
+    /* ═══════════════════════════════════════════════
+       LANDSCAPE VIEW styles
+    ═══════════════════════════════════════════════ */
+    #ls-network-col{flex:0 0 62%;display:flex;flex-direction:column;border-right:1px solid #1e2d45;background:#0d1420;overflow:hidden}
+    #ls-toolbar{display:flex;align-items:center;gap:10px;padding:11px 18px;border-bottom:1px solid #1e2d45;font-size:12px;background:#111926}
+    #ls-toolbar .tb-title{font-weight:700;color:#c8d8e8;font-size:13px}
+    #ls-toolbar .tb-sub{color:#4a6080}
+    #ls-svg{flex:1;width:100%;overflow:visible}
+    .ls-legend{display:flex;gap:16px;padding:9px 18px;border-top:1px solid #1e2d45;font-size:11px;color:#4a6080;flex-wrap:wrap;flex-shrink:0;background:#0d1420}
+    .ll-item{display:flex;align-items:center;gap:5px}
+    .ll-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .ll-line{width:22px;height:2px;flex-shrink:0}
+
+    /* ── Landscape right panel ──────────────────── */
+    #ls-panel-col{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#111926}
+    #ls-panel-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:14px;color:#3a5070;padding:40px 24px;text-align:center}
+    #ls-panel-empty .empty-icon{font-size:52px;opacity:.3}
+    #ls-panel-empty p{font-size:13px;max-width:230px;line-height:1.6}
+    #ls-panel-content{display:none;flex-direction:column;overflow-y:auto;flex:1}
+
+    .lsp-header{padding:20px 22px 16px;border-bottom:1px solid #1e2d45}
+    .lsp-type-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:#fff;margin-bottom:8px}
+    .lsp-title{font-size:19px;font-weight:800;color:#d0dce8;margin-bottom:4px}
+    .lsp-fn{font-size:12.5px;color:#5a7090;line-height:1.5}
+
+    .lsp-scope-strip{display:flex;align-items:center;gap:8px;margin:12px 22px 0;padding:9px 12px;border-radius:8px;font-size:12.5px;font-weight:600}
+    .lsp-scope-strip.in-scope{background:#0d2a1a;color:#4ade80;border:1px solid #1e4a30}
+    .lsp-scope-strip.out-scope{background:#1a2035;color:#4a6080;border:1px solid #2a3d55}
+
+    .lsp-meta{padding:14px 22px 0}
+    .lsp-meta-row{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid #1a2540;font-size:12.5px}
+    .lsp-meta-row:last-child{border:none}
+    .lsp-meta-label{color:#3a5070;font-weight:600;width:88px;flex-shrink:0}
+    .lsp-meta-val{color:#a0b8cc;line-height:1.5}
+
+    .lsp-flows{padding:14px 22px 0}
+    .lsp-flows-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#4a86c8;margin-bottom:10px}
+    .lsp-flow-row{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid #1a2540;font-size:12.5px}
+    .lsp-flow-row:last-child{border:none}
+    .flow-dir{font-size:14px;flex-shrink:0;margin-top:1px}
+    .flow-desc{color:#a0b8cc;line-height:1.5;flex:1}
+    .flow-freq{font-size:11px;color:#3a5070;flex-shrink:0;padding-top:2px}
+
+    .lsp-drill-btn{margin:18px 22px;padding:10px 18px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s}
+    .lsp-drill-btn:hover{background:#1e40af}
+    .lsp-drill-btn.disabled{background:#1a2540;color:#3a5070;cursor:not-allowed}
+
+    /* ═══════════════════════════════════════════════
+       DETAIL VIEW styles
+    ═══════════════════════════════════════════════ */
+    #detail-top-bar{display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid #1e2d45;background:#111926;flex-shrink:0}
+    .back-btn{display:flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid #2a3d55;border-radius:6px;background:#1a2540;font-size:12px;font-weight:600;color:#7a9ab8;cursor:pointer;transition:all .15s}
+    .back-btn:hover{background:#1e3060;border-color:#3a5080}
+    .detail-sys-btns{display:flex;gap:6px;margin-left:8px}
+    .sys-btn{padding:5px 13px;border-radius:20px;border:1px solid #2a3d55;background:#1a2540;font-size:12px;font-weight:600;color:#7a9ab8;cursor:pointer;transition:all .15s}
+    .sys-btn:hover{background:#1e3060}
+    .sys-btn.active{color:#fff}
+
+    #detail-main{display:flex;flex:1;overflow:hidden;min-height:0}
+    #network-col{flex:0 0 60%;display:flex;flex-direction:column;border-right:1px solid #1e2d45;background:#0d1420;overflow:hidden}
+    #svg-map{flex:1;width:100%;overflow:visible;cursor:default}
+    .map-legend{display:flex;gap:14px;padding:9px 16px;border-top:1px solid #1e2d45;font-size:11px;color:#4a6080;flex-wrap:wrap;flex-shrink:0;background:#0d1420}
+    .legend-item{display:flex;align-items:center;gap:5px}
+    .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .legend-dash{width:20px;height:2px;border-top:2px dashed #2a4060;flex-shrink:0}
+
+    /* ── Question panel ─────────────────────────── */
+    #panel-col{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#111926}
+    #panel-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:12px;color:#3a5070;padding:40px 24px;text-align:center}
+    #panel-empty .empty-icon{font-size:48px;opacity:.3}
+    #panel-empty p{font-size:13px;max-width:240px;line-height:1.6}
+    #panel-content{display:none;flex-direction:column;flex:1;overflow-y:auto}
+
+    .panel-header{padding:18px 20px 14px;border-bottom:1px solid #1e2d45;flex-shrink:0}
+    .sys-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:#fff;margin-bottom:8px}
+    .panel-area-title{font-size:17px;font-weight:700;color:#d0dce8;display:flex;align-items:center;gap:8px}
+    .area-icon{font-size:20px}
+
+    .tp-banner{margin:12px 20px 0;padding:10px 14px;background:#1e1a00;border:1px solid #3a3000;border-radius:8px;font-size:12.5px;color:#f0c040;display:none}
+
+    .findings-box{margin:12px 20px 0;padding:12px 14px;background:#1e1000;border:1px solid #3a2000;border-radius:8px}
+    .findings-label{font-size:11px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+    .findings-text{font-size:12.5px;color:#c08040;line-height:1.6}
+
+    .section-wrap{padding:14px 20px 0}
+    .section-hdr{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#4a86c8;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+    .cov-chip{background:#0e2040;color:#7eb8f7;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:700}
+
+    .q-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #1a2540;cursor:pointer;align-items:flex-start}
+    .q-item:last-child{border-bottom:none}
+    .q-item:hover{background:#141d2e;margin:0 -20px;padding:8px 20px}
+    .q-cb{width:16px;height:16px;border:2px solid #2a3d55;border-radius:4px;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+    .q-cb.checked{background:#2e7d32;border-color:#2e7d32;color:#fff;font-size:10px}
+    .q-text{font-size:13px;color:#a0b8cc;line-height:1.5;flex:1}
+    .q-text.checked-text{color:#3a5070;text-decoration:line-through}
+    .followup-list{margin:6px 0 2px 26px;padding-left:12px;border-left:2px solid #1e2d45}
+    .followup-item{font-size:11.5px;color:#4a6080;line-height:1.5;padding:3px 0;display:flex;gap:6px}
+    .followup-item::before{content:"↳";color:#3a5070;flex-shrink:0}
+
+    .crosslink-list{display:flex;flex-direction:column;gap:8px}
+    .crosslink-chip{display:flex;align-items:center;gap:10px;padding:9px 12px;background:#141d2e;border:1px solid #1e2d45;border-radius:8px;cursor:pointer;transition:background .15s}
+    .crosslink-chip:hover{background:#1a2540;border-color:#2a3d55}
+    .cl-badge{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+    .cl-reason{font-size:12px;color:#5a7090;line-height:1.4;flex:1}
+    .cl-arrow{color:#3a5070;font-size:14px;flex-shrink:0}
+
+    /* ── Coverage strip ─────────────────────────── */
+    #coverage-strip{flex-shrink:0;background:#0d1420;border-top:1px solid #1e2d45;padding:10px 18px;display:none}
+    .cov-system{flex:1;min-width:200px}
+    .cov-sys-label{font-size:12px;font-weight:700;color:#c8d8e8;margin-bottom:7px;display:flex;align-items:center;gap:8px}
+    .cov-sys-pct{font-size:11px;font-weight:700;color:#4a86c8}
+    .cov-areas{display:flex;gap:6px;flex-wrap:wrap}
+    .cov-area-bar{flex:1;min-width:64px}
+    .cov-area-label{font-size:10px;color:#4a6080;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cov-area-track{height:6px;background:#1a2540;border-radius:3px;overflow:hidden}
+    .cov-area-fill{height:100%;border-radius:3px;transition:width .3s;background:#4a86c8}
+    .cov-area-fill.full{background:#2e7d32}
+
+    /* ── Contacts / Stakeholders ─────────────────── */
+    .toggle-btn{padding:4px 12px;border-radius:20px;border:1px solid #2a3d55;background:#1a2540;font-size:11.5px;font-weight:600;color:#7a9ab8;cursor:pointer;transition:all .15s}
+    .toggle-btn:hover{background:#1e3060}
+    .toggle-btn.active{background:#7c3aed;border-color:#7c3aed;color:#fff}
+
+    .lsp-contacts{padding:14px 22px 0}
+    .lsp-contacts-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#a78bfa;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+    .contact-card{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;background:#1a1030;border:1px solid #2a1a50;border-radius:8px;margin-bottom:7px;cursor:pointer;transition:background .15s}
+    .contact-card:hover{background:#201540}
+    .contact-card.cross-sys{background:#180818;border-color:#3a1030}
+    .contact-card.cross-sys:hover{background:#220e22}
+    .contact-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;color:#fff}
+    .contact-info{flex:1;min-width:0}
+    .contact-name{font-size:12.5px;font-weight:700;color:#d0dce8}
+    .contact-role{font-size:11px;color:#5a7090;margin-bottom:4px}
+    .contact-org{font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;display:inline-block;margin-bottom:5px}
+    .contact-areas{display:flex;flex-wrap:wrap;gap:4px}
+    .contact-area-chip{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;color:#fff}
+    .contact-wt-btn{font-size:11px;padding:4px 10px;background:#1e3a8a;color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;flex-shrink:0;margin-top:4px;transition:background .15s}
+    .contact-wt-btn:hover{background:#1e40af}
+
+    .area-contact-strip{display:flex;align-items:center;gap:8px;margin:0 20px 0;padding:8px 12px;background:#1a1030;border:1px solid #2a1a50;border-radius:8px;font-size:12px}
+    .area-contact-avatar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;color:#fff}
+    .area-contact-info{flex:1}
+    .area-contact-name{font-weight:700;color:#d0dce8}
+    .area-contact-role{color:#5a7090;font-size:11px}
+    .wt-link{font-size:11px;padding:4px 9px;background:#1e3a8a;color:#fff;border:none;border-radius:6px;cursor:pointer;text-decoration:none;white-space:nowrap;flex-shrink:0}
+    .wt-link:hover{background:#1e40af}
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="logo" href="index.html">IT Audit Intelligence</a>
+  <span class="sep">›</span>
+  <span>Module B — IT Understanding Map</span>
+  <span class="engagement">ACME Corp · FY2025</span>
+  <span class="badge" id="nav-badge">IT Landscape</span>
+</nav>
+
+<!-- ════════════════════════════════════════════════════
+     VIEW 1 — IT LANDSCAPE
+════════════════════════════════════════════════════ -->
+<div id="view-landscape">
+  <div id="ls-network-col">
+    <div id="ls-toolbar">
+      <span class="tb-title">IT Landscape — ACME Corp</span>
+      <span class="tb-sub">· 5 systems in scope</span>
+      <button class="toggle-btn" id="contacts-toggle" onclick="toggleContacts()">👥 Stakeholders</button>
+      <button class="toggle-btn" id="connmap-toggle" onclick="toggleConnectionMap()">🔗 Contact Map</button>
+      <button class="toggle-btn" id="org-toggle" onclick="toggleOrgChart()">🏢 Org Chart</button>
+      <span style="margin-left:auto;font-size:11px;color:#94a3b8" id="ls-hint">Click a system to explore</span>
+    </div>
+    <svg id="ls-svg"></svg>
+    <svg id="conn-svg" style="display:none;flex:1;width:100%;min-height:0"></svg>
+    <svg id="org-svg" style="display:none;flex:1;width:100%;min-height:0;overflow:visible"></svg>
+    <div class="ls-legend" id="ls-legend-sys">
+      <div class="ll-item"><div class="ll-dot" style="background:#1e3a8a"></div> SAP S/4HANA</div>
+      <div class="ll-item"><div class="ll-dot" style="background:#14532d"></div> Oracle EBS</div>
+      <div class="ll-item"><div class="ll-dot" style="background:#b45309"></div> Workday</div>
+      <div class="ll-item"><div class="ll-dot" style="background:#0f766e"></div> ServiceNow</div>
+      <div class="ll-item"><div class="ll-dot" style="background:#5b21b6"></div> Azure AD</div>
+      <div class="ll-item"><div class="ll-dot" style="background:#94a3b8"></div> Power BI (out of scope)</div>
+      <div class="ll-item"><div class="ll-line" style="background:#4a86c8;height:2px"></div> Data flow</div>
+      <div class="ll-item"><div class="ll-line" style="border-top:2px dashed #94a3b8"></div> Migration / bidirectional</div>
+      <div class="ll-item" id="legend-contacts" style="display:none"><div class="ll-dot" style="background:#7c3aed"></div> System contact</div>
+      <div class="ll-item" id="legend-crosscontacts" style="display:none"><div class="ll-dot" style="background:#be123c"></div> Cross-system contact</div>
+    </div>
+    <div class="ls-legend" id="ls-legend-conn" style="display:none">
+      <div class="ll-item"><div class="ll-dot" style="background:#7c3aed"></div> Stakeholder</div>
+      <div class="ll-item"><div class="ll-dot" style="background:#4a86c8"></div> System</div>
+      <div class="ll-item"><div class="ll-line" style="background:#4a6080;height:2px"></div> Covers system</div>
+      <div class="ll-item" style="color:#94a3b8">Thicker edge = more areas covered</div>
+    </div>
+    <div class="ls-legend" id="ls-legend-org" style="display:none">
+      <div class="ll-item"><div style="width:18px;height:12px;border-radius:3px;background:#2a3d55;border:1px solid #4a6080"></div> Unnamed / senior role</div>
+      <div class="ll-item"><div class="ll-line" style="background:#4a86c8;height:2px"></div> Direct report</div>
+      <div class="ll-item"><div class="ll-line" style="border-top:2px dashed #7c3aed"></div> Dotted-line / functional</div>
+      <div class="ll-item"><div class="ll-line" style="border-top:2px dashed #b45309"></div> External (Third Party)</div>
+    </div>
+  </div>
+  <div id="ls-panel-col">
+    <div id="ls-panel-empty">
+      <div class="empty-icon">🏢</div>
+      <p>Click a system node to view its business function, hosting details, and data flows.</p>
+    </div>
+    <div id="ls-panel-content"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     VIEW 2 — IT AREA DETAIL
+════════════════════════════════════════════════════ -->
+<div id="view-detail">
+  <div id="detail-top-bar">
+    <button class="back-btn" onclick="showLandscape()">← IT Landscape</button>
+    <div class="detail-sys-btns" id="detail-sys-btns"></div>
+    <span style="margin-left:auto;font-size:11px;color:#94a3b8">Click any node to explore</span>
+  </div>
+  <div id="detail-main">
+    <div id="network-col">
+      <svg id="svg-map"></svg>
+      <div class="map-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#6d28d9"></div> Batch Jobs</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#b45309"></div> Change Mgmt</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#c2410c"></div> Dev Mgmt</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#0369a1"></div> Access (JML/UAR/PAM/Auth)</div>
+        <div class="legend-item"><div class="legend-dash"></div> Cross-area dependency</div>
+      </div>
+    </div>
+    <div id="panel-col">
+      <div id="panel-empty">
+        <div class="empty-icon">🗺️</div>
+        <p>Click any area node to see structured questions, prior year findings, and related areas.</p>
+      </div>
+      <div id="panel-content"></div>
+    </div>
+  </div>
+  <div id="coverage-strip"></div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   SHARED DATA
+═══════════════════════════════════════════════════ */
+
+const LS_SYSTEMS = {
+  sap: {
+    label:"SAP S/4HANA", short:"SAP", type:"ERP",
+    color:"#1e3a8a", typeColor:"#1e3a8a",
+    inScope: true,
+    function:"Finance & Procurement ERP — manages GL, AP/AR, fixed assets, purchase orders.",
+    hosting:"AWS (managed by Accenture)",
+    owner:"CFO Office / IT Director",
+    outsourced:true,
+    outsourced_note:"SAP Basis, infrastructure, and development managed by Accenture. Obtain Accenture SOC 2 Type II report.",
+    scope_note:"Newly in scope FY2025 — ERP migration completed Jan 2025.",
+    flows:[
+      {dir:"←", desc:"Receives SSO authentication from Azure AD", peer:"Azure AD", freq:"Real-time"},
+      {dir:"←", desc:"Employee headcount & org data synced from Workday", peer:"Workday", freq:"Daily"},
+      {dir:"←", desc:"Change tickets for SAP deployments raised in ServiceNow", peer:"ServiceNow", freq:"On-demand"},
+      {dir:"↔", desc:"Legacy data migration with Oracle EBS (parallel run period)", peer:"Oracle EBS", freq:"Batch / dashed"},
+      {dir:"→", desc:"Financial data published to Power BI reporting layer", peer:"Power BI", freq:"Daily"},
+    ]
+  },
+  oracle: {
+    label:"Oracle EBS", short:"Oracle", type:"ERP (Legacy)",
+    color:"#14532d", typeColor:"#14532d",
+    inScope: true,
+    function:"Legacy Finance ERP — historical GL, payroll costing, fixed assets (being phased out).",
+    hosting:"On-premises — Data Centre A (Sydney)",
+    owner:"IT Director",
+    outsourced:false,
+    scope_note:"Existing system, remaining in scope through FY2025 transition.",
+    flows:[
+      {dir:"←", desc:"Receives SSO authentication from Azure AD", peer:"Azure AD", freq:"Real-time"},
+      {dir:"←", desc:"Payroll GL journal entries received from Workday", peer:"Workday", freq:"Monthly"},
+      {dir:"←", desc:"Change tickets for Oracle patches raised in ServiceNow", peer:"ServiceNow", freq:"On-demand"},
+      {dir:"↔", desc:"Legacy data migration with SAP (parallel run period)", peer:"SAP S/4HANA", freq:"Batch / dashed"},
+      {dir:"→", desc:"Historical financial data published to Power BI", peer:"Power BI", freq:"Daily"},
+    ]
+  },
+  workday: {
+    label:"Workday HCM/Payroll", short:"Workday", type:"HCM / Payroll",
+    color:"#b45309", typeColor:"#b45309",
+    inScope: true,
+    function:"Human Capital Management & Payroll — employee master data, payroll processing, leave, benefits.",
+    hosting:"Workday SaaS (cloud)",
+    owner:"HR Director",
+    outsourced:false,
+    scope_note:"In scope FY2024 and FY2025 — payroll system of record.",
+    flows:[
+      {dir:"←", desc:"Receives SSO authentication from Azure AD", peer:"Azure AD", freq:"Real-time"},
+      {dir:"→", desc:"Employee headcount & org structure synced to SAP", peer:"SAP S/4HANA", freq:"Daily"},
+      {dir:"→", desc:"Payroll GL journals posted to Oracle EBS", peer:"Oracle EBS", freq:"Monthly"},
+    ]
+  },
+  servicenow: {
+    label:"ServiceNow ITSM", short:"ServiceNow", type:"ITSM",
+    color:"#0f766e", typeColor:"#0f766e",
+    inScope: true,
+    function:"IT Service Management — change, incident, problem, and service request management.",
+    hosting:"ServiceNow SaaS (cloud)",
+    owner:"IT Director",
+    outsourced:false,
+    scope_note:"In scope as system of record for change management across SAP and Oracle.",
+    flows:[
+      {dir:"←", desc:"Receives SSO authentication from Azure AD", peer:"Azure AD", freq:"Real-time"},
+      {dir:"→", desc:"Change tickets for SAP deployments (transports)", peer:"SAP S/4HANA", freq:"On-demand"},
+      {dir:"→", desc:"Change tickets for Oracle patches and configs", peer:"Oracle EBS", freq:"On-demand"},
+    ]
+  },
+  azuread: {
+    label:"Azure Active Directory", short:"Azure AD", type:"IAM / SSO",
+    color:"#5b21b6", typeColor:"#5b21b6",
+    inScope: true,
+    function:"Identity & Access Management — SSO hub for all in-scope systems. Central MFA enforcement.",
+    hosting:"Microsoft Azure (cloud)",
+    owner:"IT Director / CISO",
+    outsourced:false,
+    scope_note:"Highly critical — controls authentication for all in-scope systems.",
+    flows:[
+      {dir:"→", desc:"SSO & MFA enforcement for SAP S/4HANA", peer:"SAP S/4HANA", freq:"Real-time"},
+      {dir:"→", desc:"SSO & MFA enforcement for Oracle EBS", peer:"Oracle EBS", freq:"Real-time"},
+      {dir:"→", desc:"SSO & MFA enforcement for Workday", peer:"Workday", freq:"Real-time"},
+      {dir:"→", desc:"SSO & MFA enforcement for ServiceNow", peer:"ServiceNow", freq:"Real-time"},
+    ]
+  },
+  powerbi: {
+    label:"Power BI", short:"Power BI", type:"Reporting",
+    color:"#94a3b8", typeColor:"#64748b",
+    inScope: false,
+    function:"Management reporting & dashboards — consumes financial data from SAP and Oracle EBS.",
+    hosting:"Microsoft Azure (cloud)",
+    owner:"Finance Director",
+    outsourced:false,
+    scope_note:"Out of scope for ITGC — read-only reporting tool, no financial transactions processed.",
+    flows:[
+      {dir:"←", desc:"Financial data from SAP S/4HANA", peer:"SAP S/4HANA", freq:"Daily"},
+      {dir:"←", desc:"Historical financial data from Oracle EBS", peer:"Oracle EBS", freq:"Daily"},
+    ]
+  },
+};
+
+// Layout positions for landscape SVG (W=960, H=480)
+const LS_POS = {
+  azuread:    [480, 260],
+  sap:        [730, 140],
+  oracle:     [230, 140],
+  workday:    [480,  70],
+  servicenow: [480, 420],
+  powerbi:    [750, 385],
+};
+
+// Landscape edges — [from, to, label, dashed]
+const LS_EDGES = [
+  ['azuread','sap',        'SSO',            false],
+  ['azuread','oracle',     'SSO',            false],
+  ['azuread','workday',    'SSO',            false],
+  ['azuread','servicenow', 'SSO',            false],
+  ['workday','sap',        'employee sync',  false],
+  ['workday','oracle',     'payroll GL',     false],
+  ['sap',    'oracle',     'data migration', true],
+  ['servicenow','sap',     'change tickets', false],
+  ['servicenow','oracle',  'change tickets', false],
+  ['sap',    'powerbi',    'financial data', false],
+  ['oracle', 'powerbi',    'financial data', false],
+];
+
+/* ═══════════════════════════════════════════════════
+   DETAIL DATA (per in-scope system × 7 IT areas)
+═══════════════════════════════════════════════════ */
+
+const AREA_ORDER = ['batch','change','dev','jml','priv','uar','auth'];
+const AREAS = {
+  batch: { label:"Batch Jobs",               icon:"⚙️",  color:"#6d28d9" },
+  change:{ label:"Change Mgmt",              icon:"🔄",  color:"#b45309" },
+  dev:   { label:"Dev Management",           icon:"💻",  color:"#c2410c" },
+  jml:   { label:"Access Provisioning (JML)",icon:"👤",  color:"#0369a1" },
+  priv:  { label:"Privileged Access",        icon:"🔑",  color:"#0f766e" },
+  uar:   { label:"User Access Review",       icon:"✅",  color:"#1d4ed8" },
+  auth:  { label:"Authentication",           icon:"🛡️",  color:"#4338ca" },
+};
+
+const CROSS_LINKS = [
+  { a:'batch', b:'change', reason:"Batch job schedule/parameter changes should go through formal change management" },
+  { a:'change',b:'dev',   reason:"Production code deployments are a type of change — SDLC and CM must be aligned" },
+  { a:'jml',   b:'uar',   reason:"JML-provisioned access is the exact population UAR should be reviewing" },
+  { a:'jml',   b:'auth',  reason:"How are initial credentials securely provisioned and communicated to new joiners?" },
+  { a:'priv',  b:'uar',   reason:"Privileged accounts deserve special scrutiny in UAR — are they reviewed separately?" },
+  { a:'priv',  b:'auth',  reason:"Are privileged accounts subject to stricter MFA / authentication requirements?" },
+];
+
+const QUESTION_BANK = {
+  overview:{label:"System Overview",icon:"🏢",questions:[
+    {q:"What business processes does this system support?",fu:[]},
+    {q:"Who is the system owner / responsible manager?",fu:[]},
+    {q:"Where is the system hosted — on-prem, cloud, or managed service?",fu:["If managed service: which provider? Is there a SOC 1/SOC 2 report?","What complementary user entity controls (CUECs) does the company rely on?"]},
+    {q:"Has there been any major development, upgrade, or migration this year?",fu:["If yes: walk me through what changed and how it was tested and approved"]},
+    {q:"Is any IT function outsourced to a third party?",fu:["If yes: which functions? SOC report available and does it cover the relevant period?"]},
+    {q:"What are the key system integrations and interfaces? Are they real-time or batch?",fu:[]},
+    {q:"What is the criticality of this system to financial reporting?",fu:[]},
+  ]},
+  batch:{label:"Batch Jobs",icon:"⚙️",questions:[
+    {q:"Can you walk me through the key batch jobs / scheduled tasks on this system?",fu:[]},
+    {q:"How are batch jobs scheduled? (Built-in scheduler, third-party tool, cron job?)",fu:[]},
+    {q:"Who monitors batch job completion, and how?",fu:["If manual: how frequently? Who covers evenings, weekends, and public holidays?","If automated alerts: show me an example alert and how failures are triaged and escalated"]},
+    {q:"What is the escalation process when a batch job fails?",fu:[]},
+    {q:"Are batch job logs retained? Who reviews them and how often?",fu:[]},
+    {q:"Are changes to batch job schedules or parameters subject to change management?",fu:[]},
+    {q:"Are there month-end or year-end batch processes that directly affect financial reporting?",fu:["If yes: who initiates, who monitors, and what controls are over the output?","How is the completeness and accuracy of batch output validated?"]},
+    {q:"Who has access to modify batch job parameters, schedules, or code?",fu:[]},
+    {q:"Are any batch jobs outsourced or run by a third party?",fu:["If yes: how does the company monitor the third party's batch processing?"]},
+  ]},
+  change:{label:"Change Management",icon:"🔄",questions:[
+    {q:"Walk me through the change management process — from initial request through to production deployment.",fu:[]},
+    {q:"Who can submit a change request? Is there a formal ITSM / ticketing system?",fu:[]},
+    {q:"What are the approval requirements? Who approves, and are there different levels based on risk?",fu:[]},
+    {q:"Is testing required for all changes? Who signs off on testing before production deployment?",fu:["Is formal UAT documented? Who performs it — IT or the business?"]},
+    {q:"How are emergency / urgent changes handled? Is there a separate fast-track process?",fu:["Are emergency changes retrospectively reviewed and formally approved?","How many emergency changes were there this year? Can I see the log?"]},
+    {q:"Is segregation of duties enforced? (requester ≠ developer ≠ approver ≠ deployer)",fu:[]},
+    {q:"Are production deployments performed by a separate release team, not the developers?",fu:[]},
+    {q:"Approximately how many changes were processed this year? Any significantly high-risk changes?",fu:[]},
+    {q:"Are there change freeze periods? (e.g., month-end, year-end close)",fu:[]},
+  ]},
+  dev:{label:"Development Management",icon:"💻",questions:[
+    {q:"Is development done in-house, fully outsourced, or a hybrid model?",fu:["If outsourced: to whom? Is there a SOC 2 report? How is code quality and security reviewed?"]},
+    {q:"Are development, test/QA, and production environments strictly separated?",fu:["Can developers access the production environment? How is this access controlled and monitored?"]},
+    {q:"What is the process for moving code from development through test to production?",fu:[]},
+    {q:"Is version control / source control used? (Git, Azure DevOps, SVN?)",fu:[]},
+    {q:"What does the code review process look like? Who reviews, and who approves before deployment?",fu:[]},
+    {q:"Is formal UAT performed and documented by the business before go-live?",fu:[]},
+    {q:"Is production data ever used in test or development environments?",fu:["If yes: how is sensitive data masked or anonymised?"]},
+    {q:"How are third-party packages, patches, and vendor updates managed?",fu:[]},
+    {q:"Is there a formal SDLC policy? Is it adhered to for all changes?",fu:[]},
+  ]},
+  jml:{label:"Access Provisioning (JML)",icon:"👤",questions:[
+    {q:"Walk me through the end-to-end process when a new employee needs access (Joiner process).",fu:[]},
+    {q:"Who initiates the access request — HR, the line manager, or IT?",fu:[]},
+    {q:"Who approves access requests? Is there a role-based access matrix or access catalogue?",fu:["How do you ensure users receive only the minimum access required (least privilege)?"]},
+    {q:"What happens when an employee changes roles (Mover)? Is prior access automatically revoked?",fu:["Is there a formal process to review and adjust access when someone moves internally?"]},
+    {q:"Walk me through the leaver process — what happens when an employee leaves?",fu:["Is the leaver process automated (triggered by HR system) or manual?","What is the SLA for revoking access after someone's last day?","Any cases this year where access was not revoked within the SLA?"]},
+    {q:"How is contractor and temporary staff access managed? Is it time-limited or role-limited?",fu:[]},
+    {q:"How is the initial system password / credential securely communicated to a new joiner?",fu:[]},
+    {q:"Is access provisioning integrated with the HR / payroll system? Is any part automated?",fu:[]},
+  ]},
+  priv:{label:"Privileged Access",icon:"🔑",questions:[
+    {q:"Who currently holds privileged / administrator / superuser access to this system?",fu:["How many users have privileged access? Is this number appropriate and regularly reviewed?"]},
+    {q:"How is privileged access requested, justified, and approved?",fu:[]},
+    {q:"Are privileged accounts separate from users' regular day-to-day accounts?",fu:[]},
+    {q:"Are privileged account activities logged? Who reviews these logs?",fu:["How often are logs reviewed? Is there automated alerting on anomalous privileged activity?"]},
+    {q:"Are there any shared or generic admin accounts (e.g., 'admin', 'root', 'oracle_dba')?",fu:["If yes: how is accountability maintained?","Is the password changed whenever someone with knowledge of it leaves?"]},
+    {q:"Is there a 'firecall' / emergency break-glass access procedure? How is it controlled?",fu:[]},
+    {q:"Is a PAM (Privileged Access Management) tool in use? (CyberArk, BeyondTrust, Delinea?)",fu:["If yes: does all privileged access flow through the PAM tool? Any exceptions?","Are session recordings available for privileged sessions?"]},
+    {q:"Are privileged accounts subject to more frequent access reviews than standard user accounts?",fu:[]},
+  ]},
+  uar:{label:"User Access Review (UAR)",icon:"✅",questions:[
+    {q:"How often is a formal user access review (UAR) conducted for this system?",fu:[]},
+    {q:"Who performs the review — system owner, line managers, IT, or a combination?",fu:[]},
+    {q:"What is the scope of the review? Does it include all active users, or only a subset?",fu:["Are terminated employee accounts explicitly included in the review scope?","Are service accounts, shared accounts, and system accounts included?","Are privileged / admin accounts reviewed separately with additional scrutiny?"]},
+    {q:"How is the review conducted? (Spreadsheet sent to managers, GRC tool, native report?)",fu:[]},
+    {q:"What happens when inappropriate or excessive access is identified? Remediation timeline?",fu:[]},
+    {q:"How is the completed review documented and signed off? Is there a formal evidence pack?",fu:[]},
+    {q:"How do you ensure the user population used for the review is complete and accurate?",fu:["Is the list sourced directly from the system, or could accounts be missing?"]},
+    {q:"How long does the review process take from initiation through completion and certification?",fu:[]},
+  ]},
+  auth:{label:"Authentication",icon:"🛡️",questions:[
+    {q:"What is the password policy for this system? (minimum length, complexity, expiry, history)",fu:["Is the policy configured directly in the system, or enforced via corporate AD / SSO?"]},
+    {q:"Is MFA (multi-factor authentication) enforced? For all users, or only privileged accounts?",fu:["If not for all: which groups are exempt and why?","What MFA method is used? (Authenticator app, SMS, hardware token?)"]},
+    {q:"What is the account lockout policy after failed login attempts?",fu:[]},
+    {q:"Is SSO (Single Sign-On) in use? Which identity provider?",fu:["Is the system accessible outside of SSO via a local account fallback? How is this controlled?"]},
+    {q:"Are service accounts and system accounts subject to the same password policy?",fu:["When were service account passwords last rotated?","Who has visibility of service account credentials?"]},
+    {q:"Are any accounts exempted from the standard password policy? Which accounts and why?",fu:[]},
+    {q:"Are all authentication attempts (successful and failed) logged? Is there alerting on anomalous activity?",fu:[]},
+    {q:"Is there a session timeout / auto-logout policy for inactive sessions?",fu:[]},
+  ]},
+};
+
+const PRIOR_YEAR = {
+  sap:{
+    overview:"SAP S/4HANA newly in scope FY2025 following ERP migration completed January 2025. First year of audit coverage. Focus on design effectiveness. Infrastructure managed by Accenture (SAP Basis team).",
+    batch:   "ℹ️ First year in scope — no prior year findings. Obtain list of all batch jobs from Accenture/SAP Basis team. Note: Accenture runs infrastructure batch jobs — verify coverage in their SOC 2 report.",
+    change:  "ℹ️ First year in scope — no prior year findings. Obtain and review SAP change management policy. Understand how SAP transports are managed and whether Accenture changes follow the same process.",
+    dev:     "ℹ️ First year in scope — SAP customisations (Z-code, BADIs) developed and deployed by Accenture. Obtain Accenture SOC 2 Type II report and review complementary user entity controls (CUECs) ACME Corp is responsible for.",
+    jml:     "ℹ️ First year in scope — no prior year findings. Understand how SAP access provisioning integrates with the corporate HR system (Workday). Confirm whether the JML process is consistent with Oracle EBS or uses a different workflow.",
+    priv:    "ℹ️ First year in scope — Accenture (SAP Basis team) holds privileged access to the SAP infrastructure layer. Confirm how ACME Corp oversees and monitors Accenture's privileged access. Verify coverage in Accenture's SOC 2 report.",
+    uar:     "ℹ️ First year in scope — confirm whether a UAR has been conducted for SAP since go-live (January 2025). If yes, obtain evidence. If no, assess whether this is a control gap given the system has been live for most of FY2025.",
+    auth:    "ℹ️ First year in scope — confirm SAP authentication settings align with the corporate IT Security Policy. Key areas: password policy in SAP, MFA enforcement (via SSO/Azure AD?), session timeout parameters.",
+  },
+  oracle:{
+    overview:"Overall IT environment stable in FY2024. No major system changes. Oracle EBS running version 12.2.10. System to be decommissioned post FY2025 transition.",
+    batch:   "🔴 Finding (FY2024): Three batch jobs (AP Invoice Processing, AR Ageing, GL Consolidation) had no automated failure alerting. Failures were only detected the following business day. Management agreed to implement automated monitoring by Q3 FY2024. → Verify implementation status.",
+    change:  "🟡 Finding (FY2024): Two emergency changes (CH-2024-089, CH-2024-134) were not retrospectively reviewed and formally approved within the 24-hour policy requirement. Root cause: weekend changes with no on-call approver. Management updated the emergency change SOP and on-call roster.",
+    dev:     "🔴 Finding (FY2024): Developer account IT-Admin-07 retained read access to production data following completion of the SDLC remediation project. Access identified and removed March 2024. → Confirm current developer access to production has been reviewed.",
+    jml:     "🔴 Finding (FY2024): Four terminated employee accounts remained active more than 30 days after departure. Longest gap: 67 days. Root cause: manual HR-to-IT notification process. Automated provisioning trigger implemented Q2 FY2024. → Test effectiveness of new automated leaver process.",
+    priv:    "🔴 Finding (FY2024): Shared DBA account 'ora_dba_admin' password not changed after a staff member with knowledge of the credential resigned. Policy updated; individual DBA accounts now used. → Verify no shared privileged accounts remain.",
+    uar:     "🟡 Finding (FY2024): FY2024 UAR excluded the General Ledger module (~25 users) due to a system extraction issue. Management committed to include all modules in FY2025 UAR. → Verify FY2025 UAR scope includes the GL module.",
+    auth:    "🟡 Finding (FY2024): Oracle EBS password minimum length was configured at 8 characters, below the firm's IT Security Policy requirement of 12 characters. Updated to 12 characters in February 2024. → Validate current configuration.",
+  },
+  workday:{
+    overview:"Workday HCM/Payroll in scope FY2024 and FY2025. SaaS platform hosted by Workday. Obtain Workday SOC 1 Type II report covering FY2025 period. Review CUECs relevant to ACME Corp.",
+    batch:   "ℹ️ Note (FY2024): Workday integrations (employee sync to SAP, payroll GL to Oracle) are managed as scheduled integrations. Obtain list of scheduled integrations from Workday admin. Verify monitoring and failure alerting processes.",
+    change:  "🟡 Finding (FY2024): One configuration change to payroll calculation rules was not documented in ServiceNow before implementation. Change was identified during month-end review. Management agreed to enforce mandatory ServiceNow ticketing for all Workday configuration changes.",
+    dev:     "ℹ️ Workday is a SaaS platform — no custom development. Focus on configuration management and Workday release management (sandbox testing before vendor updates go live). Verify Workday sandbox exists and is used for pre-release testing.",
+    jml:     "🔴 Finding (FY2024): Workday terminated employee offboarding was not triggering automatic deactivation for users with custom integration roles. Three accounts remained active post-termination. HR automated the deactivation workflow Q3 FY2024. → Test effectiveness of updated leaver automation.",
+    priv:    "🟡 Finding (FY2024): Four Workday 'System Admin' accounts were shared across IT team members. Individual named accounts now required per IT Security Policy. → Verify all admin accounts are individual and named; obtain current admin user list.",
+    uar:     "🟡 Note (FY2024): First formal UAR for Workday conducted FY2024. Review covered standard roles only — custom integration and API roles were not included. FY2025 UAR scope should include all role types including integration/API accounts.",
+    auth:    "✅ No findings (FY2024): Workday enforces SSO via Azure AD for all users. MFA enforced at Azure AD level. Password policy managed centrally via Azure AD. No local Workday authentication bypass found.",
+  },
+  servicenow:{
+    overview:"ServiceNow ITSM in scope as system of record for change management across SAP and Oracle. Cloud-hosted by ServiceNow. Obtain ServiceNow SOC 2 Type II report. Focus on integrity of approval workflows.",
+    batch:   "ℹ️ ServiceNow scheduled jobs are primarily system maintenance (indexing, cleanup). No financially relevant batch processes. Low risk area. Briefly confirm no new automated workflows have financial processing implications.",
+    change:  "ℹ️ ServiceNow IS the change management system. Focus on who can approve change records within ServiceNow, whether approval workflows have been modified, and whether workflow configuration changes are themselves subject to change management.",
+    dev:     "🔴 Finding (FY2024): ServiceNow custom script (Business Rule) was deployed to production without a corresponding change ticket — the deployment bypassed the standard approval workflow. Root cause: developer had direct 'admin' access. Admin access now restricted to named accounts with full logging.",
+    jml:     "🟡 Finding (FY2024): Two former employees' ServiceNow accounts remained active 14 days post-termination. ServiceNow deactivation was not included in the standard offboarding checklist. Checklist updated and deactivation automated via Azure AD lifecycle management.",
+    priv:    "🔴 Finding (FY2024): ServiceNow 'admin' role was held by 8 users, including 2 contractors. Reduced to 3 named permanent staff. → Verify current privileged user list and confirm contractors have been removed.",
+    uar:     "✅ Note (FY2024): FY2024 UAR conducted covering all 147 active users. Four users had elevated approver roles that could not be justified by their business role. Access revoked. FY2025 UAR should again verify approver and admin role allocations.",
+    auth:    "✅ No findings (FY2024): ServiceNow enforces SSO via Azure AD. MFA required for all users. Session timeout set to 30 minutes idle. No local ServiceNow account fallback identified.",
+  },
+  azuread:{
+    overview:"Azure AD is the central identity provider for ACME Corp — SSO hub for all in-scope systems. Highly critical: a control failure here impacts authentication for SAP, Oracle, Workday, and ServiceNow simultaneously.",
+    batch:   "ℹ️ Azure AD has no financially relevant batch jobs. Automated lifecycle management workflows (joiner/leaver triggers) are relevant — see JML section below. Briefly verify no orphaned automation rules exist.",
+    change:  "🟡 Finding (FY2024): Three conditional access policy changes were made without a corresponding ServiceNow change record. As Azure AD controls authentication for all in-scope systems, policy changes require formal CM approval. Management agreed to enforce CM process for all Azure AD policy changes.",
+    dev:     "ℹ️ Azure AD is a Microsoft SaaS — no custom development. Focus on configuration management of conditional access policies, app registrations, and role assignments. Verify who can modify these configurations and whether changes are logged.",
+    jml:     "🔴 Finding (FY2024): Azure AD lifecycle management was not configured to automatically disable accounts on the HR termination date — a 24-hour manual lag existed. As Azure AD is the SSO provider, a terminated employee could retain access to ALL in-scope systems during this window. Automated triggers now configured. → Test the end-to-end automation with a test leaver scenario.",
+    priv:    "🟡 Finding (FY2024): Azure AD Global Administrator role held by 5 users. Global Admin provides unrestricted access across all Azure AD-connected systems. Reduced to 2 named accounts with PIM (Privileged Identity Management) just-in-time access. → Verify PIM is configured and operational; obtain PIM activation logs.",
+    uar:     "ℹ️ FY2024 UAR for Azure AD covered all users with directory roles. FY2025 focus: (1) Global Admin count remains ≤2, (2) all app registrations are reviewed, (3) guest/external accounts are within policy, (4) emergency access accounts are reviewed.",
+    auth:    "✅ No findings (FY2024): Azure AD enforces MFA for all users via Conditional Access policies. SSPR (Self-Service Password Reset) enabled with identity verification. Sign-in risk policies configured. Password protection enabled to block weak/common passwords.",
+  },
+};
+
+/* ═══════════════════════════════════════════════════
+   CONTACTS / STAKEHOLDERS
+   Each contact: id, name, role, org, icon, color,
+     systems[] — which systems they cover,
+     areas[]   — which IT areas they can speak to,
+     svgPos    — [x,y] in landscape SVG,
+     crossSys  — true if cross-system (IT Director, CISO)
+═══════════════════════════════════════════════════ */
+const CONTACTS = [
+  { id:'david',   name:"David Chen",     role:"IT Director",              org:"ACME Corp",  icon:"👔", color:"#7c3aed", crossSys:true,
+    systems:['sap','oracle','workday','servicenow','azuread'],
+    areas:['overview','change'],
+    svgPos:[108, 300],
+    notes:"Go-to for IT org overview, major developments, IT strategy, and vendor management. Knows the Oracle→SAP migration rationale and overall IT risk posture." },
+  { id:'emma',    name:"Emma Walsh",      role:"SAP Basis Lead",           org:"Accenture",  icon:"🔧", color:"#1e3a8a", crossSys:false,
+    systems:['sap'],
+    areas:['batch','change','dev','priv'],
+    svgPos:[858, 105],
+    notes:"Manages SAP technical operations — transports, Basis admin, infrastructure batch scheduling. Key contact for the Accenture SOC 2 Type II report and CUECs." },
+  { id:'james',   name:"James Okafor",   role:"Oracle DBA",               org:"ACME Corp",  icon:"🗄️", color:"#14532d", crossSys:false,
+    systems:['oracle'],
+    areas:['batch','dev','priv'],
+    svgPos:[103, 105],
+    notes:"Manages Oracle EBS instance, DBA accounts, batch job scheduling, and database patching. Aware of all prior year findings." },
+  { id:'priya',   name:"Priya Sharma",   role:"HR Systems Manager",       org:"ACME Corp",  icon:"👥", color:"#b45309", crossSys:false,
+    systems:['workday'],
+    areas:['jml','uar','batch'],
+    svgPos:[370, 48],
+    notes:"Owns Workday configuration, payroll runs, and HR-IT integration. Best contact for JML automation, leaver process testing, and Workday release management." },
+  { id:'michael', name:"Michael Torres", role:"ITSM / ServiceNow Admin",  org:"ACME Corp",  icon:"🎫", color:"#0f766e", crossSys:false,
+    systems:['servicenow','sap','oracle'],
+    areas:['change','dev','jml'],
+    svgPos:[610, 420],
+    notes:"Manages ServiceNow platform and is the process owner for change management across SAP and Oracle. Can pull change logs and approval evidence." },
+  { id:'sarah',   name:"Sarah Kim",      role:"Identity & Access Manager",org:"ACME Corp",  icon:"🔐", color:"#5b21b6", crossSys:false,
+    systems:['azuread','sap','oracle','workday','servicenow'],
+    areas:['jml','auth','uar','priv'],
+    svgPos:[610, 290],
+    notes:"Owns Azure AD, SSO/MFA configuration, conditional access policies, and the JML lifecycle automation. Central point for all access-related questions across systems." },
+  { id:'lisa',    name:"Lisa Park",      role:"CISO / InfoSec Manager",   org:"ACME Corp",  icon:"🛡️", color:"#be123c", crossSys:true,
+    systems:['sap','oracle','workday','servicenow','azuread'],
+    areas:['priv','auth','uar'],
+    svgPos:[858, 300],
+    notes:"Owns IT security policy, MFA standards, PAM tooling, and security monitoring. Cross-system contact for all privileged access and authentication standards." },
+];
+
+function contactsForSystem(sysKey){
+  return CONTACTS.filter(c => c.systems.includes(sysKey));
+}
+function contactsForArea(sysKey, area){
+  return CONTACTS.filter(c => c.systems.includes(sysKey) && c.areas.includes(area || 'overview'));
+}
+function areaLabel(a){ return a ? (AREAS[a]?.label || a) : 'Overview'; }
+
+/* ═══════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════ */
+const appState = {
+  showContacts: false,
+  showConnMap: false,
+  showOrgChart: false,
+  view: 'landscape',
+  lsSelected: null,      // key of selected landscape system
+  detailSystem: null,    // key of system shown in detail view
+  detailSelected: null,  // { area } or null for overview
+  checked: {},
+};
+
+function qKey(sys, area, i){ return `${sys}_${area}_${i}`; }
+
+/* ═══════════════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════════════ */
+function showLandscape(){
+  appState.view = 'landscape';
+  document.getElementById('view-landscape').style.display = 'flex';
+  document.getElementById('view-detail').style.display = 'none';
+  document.getElementById('nav-badge').textContent = 'IT Landscape';
+  document.getElementById('coverage-strip').style.display = 'none';
+}
+
+function showDetail(sysKey){
+  appState.view = 'detail';
+  appState.detailSystem = sysKey;
+  appState.detailSelected = null;
+  document.getElementById('view-landscape').style.display = 'none';
+  document.getElementById('view-detail').style.display = 'flex';
+  document.getElementById('nav-badge').textContent = 'IT Area Detail';
+  document.getElementById('coverage-strip').style.display = 'flex';
+  buildDetailSysBtns();
+  initDetailNetwork(sysKey);
+  renderCoverage(sysKey);
+  // Show empty panel
+  document.getElementById('panel-empty').style.display = 'flex';
+  document.getElementById('panel-content').style.display = 'none';
+}
+
+function buildDetailSysBtns(){
+  const inScope = Object.keys(LS_SYSTEMS).filter(k => LS_SYSTEMS[k].inScope);
+  const container = document.getElementById('detail-sys-btns');
+  container.innerHTML = inScope.map(k => {
+    const s = LS_SYSTEMS[k];
+    const active = k === appState.detailSystem ? 'active' : '';
+    const bg = k === appState.detailSystem ? `style="background:${s.color};border-color:${s.color}"` : '';
+    return `<button class="sys-btn ${active}" ${bg} onclick="switchDetailSystem('${k}')">${s.short}</button>`;
+  }).join('');
+}
+
+function switchDetailSystem(sysKey){
+  appState.detailSystem = sysKey;
+  appState.detailSelected = null;
+  buildDetailSysBtns();
+  initDetailNetwork(sysKey);
+  renderCoverage(sysKey);
+  document.getElementById('panel-empty').style.display = 'flex';
+  document.getElementById('panel-content').style.display = 'none';
+}
+
+/* ═══════════════════════════════════════════════════
+   CONTACTS TOGGLE — show/hide stakeholder overlay
+═══════════════════════════════════════════════════ */
+function _closeLsSubViews(){
+  // close conn map
+  if(appState.showConnMap){
+    appState.showConnMap = false;
+    document.getElementById('connmap-toggle').classList.remove('active');
+    document.getElementById('conn-svg').style.display = 'none';
+    document.getElementById('ls-legend-conn').style.display = 'none';
+    d3.select('#conn-svg').selectAll('*').remove();
+  }
+  // close org chart
+  if(appState.showOrgChart){
+    appState.showOrgChart = false;
+    document.getElementById('org-toggle').classList.remove('active');
+    document.getElementById('org-svg').style.display = 'none';
+    document.getElementById('ls-legend-org').style.display = 'none';
+    d3.select('#org-svg').selectAll('*').remove();
+  }
+  // always restore system map + legend
+  document.getElementById('ls-svg').style.display = '';
+  document.getElementById('ls-legend-sys').style.display = '';
+  document.getElementById('ls-hint').textContent = 'Click a system to explore';
+}
+
+function toggleContacts(){
+  // If any other sub-view active, close it first
+  if(appState.showConnMap || appState.showOrgChart) _closeLsSubViews();
+  appState.showContacts = !appState.showContacts;
+  const btn = document.getElementById('contacts-toggle');
+  btn.classList.toggle('active', appState.showContacts);
+  btn.textContent = appState.showContacts ? '👥 Hide Stakeholders' : '👥 Stakeholders';
+  document.getElementById('legend-contacts').style.display     = appState.showContacts ? 'flex' : 'none';
+  document.getElementById('legend-crosscontacts').style.display = appState.showContacts ? 'flex' : 'none';
+  drawContactOverlay(appState.showContacts);
+}
+
+/* ── Contact Connection Map ───────────────────────────────── */
+function toggleConnectionMap(){
+  // close other sub-views & contacts overlay
+  if(appState.showContacts){ drawContactOverlay(false); appState.showContacts=false; document.getElementById('contacts-toggle').classList.remove('active'); document.getElementById('contacts-toggle').textContent='👥 Stakeholders'; document.getElementById('legend-contacts').style.display='none'; document.getElementById('legend-crosscontacts').style.display='none'; }
+  if(appState.showOrgChart){ _closeLsSubViews(); }
+
+  appState.showConnMap = !appState.showConnMap;
+  const btn = document.getElementById('connmap-toggle');
+  btn.classList.toggle('active', appState.showConnMap);
+
+  if(appState.showConnMap){
+    document.getElementById('ls-svg').style.display = 'none';
+    document.getElementById('org-svg').style.display = 'none';
+    document.getElementById('conn-svg').style.display = '';
+    document.getElementById('ls-legend-sys').style.display = 'none';
+    document.getElementById('ls-legend-org').style.display = 'none';
+    document.getElementById('ls-legend-conn').style.display = '';
+    document.getElementById('ls-hint').textContent = 'Hover a node to highlight connections';
+    drawConnectionMap();
+    showConnMapSummary();
+  } else {
+    document.getElementById('ls-svg').style.display = '';
+    document.getElementById('conn-svg').style.display = 'none';
+    document.getElementById('ls-legend-sys').style.display = '';
+    document.getElementById('ls-legend-conn').style.display = 'none';
+    document.getElementById('ls-hint').textContent = 'Click a system to explore';
+    d3.select('#conn-svg').selectAll('*').remove();
+    document.getElementById('ls-panel-empty').style.display = 'flex';
+    document.getElementById('ls-panel-content').style.display = 'none';
+  }
+}
+
+function showConnMapSummary(){
+  const el = document.getElementById('ls-panel-content');
+  const empty = document.getElementById('ls-panel-empty');
+  empty.style.display = 'none';
+  el.style.display = 'flex';
+
+  // Build coverage matrix
+  const sysKeys = Object.keys(LS_SYSTEMS).filter(k=>LS_SYSTEMS[k].inScope);
+  const matrixRows = CONTACTS.map(c=>{
+    const covered = sysKeys.filter(sk=>c.systems.includes(sk));
+    return {c, covered};
+  });
+
+  el.innerHTML = `
+    <div class="lsp-header">
+      <div class="lsp-type-badge" style="background:#7c3aed">👥 Stakeholder Coverage Matrix</div>
+      <div class="lsp-title" style="font-size:15px">Who Knows What</div>
+      <div class="lsp-fn">Each stakeholder's system + area coverage. Click a row to jump to their contact card.</div>
+    </div>
+    <div style="padding:14px 22px;overflow-y:auto;flex:1">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:6px 8px;color:#4a6080;font-weight:600;border-bottom:1px solid #1e2d45;font-size:11px">Stakeholder</th>
+            ${sysKeys.map(sk=>`<th style="text-align:center;padding:6px 4px;color:${LS_SYSTEMS[sk].color};font-weight:700;border-bottom:1px solid #1e2d45;font-size:10px;writing-mode:vertical-lr;transform:rotate(180deg);white-space:nowrap;height:60px;vertical-align:bottom">${LS_SYSTEMS[sk].short}</th>`).join('')}
+            <th style="text-align:center;padding:6px 8px;color:#4a6080;font-weight:600;border-bottom:1px solid #1e2d45;font-size:11px">Areas</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${matrixRows.map(({c,covered})=>`
+            <tr style="cursor:pointer;transition:background .12s" onmouseover="this.style.background='#141d2e'" onmouseout="this.style.background=''" onclick="highlightContact('${c.id}')">
+              <td style="padding:7px 8px;border-bottom:1px solid #1a2540">
+                <div style="display:flex;align-items:center;gap:7px">
+                  <span style="width:22px;height:22px;border-radius:50%;background:${c.color};display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0">${c.icon}</span>
+                  <div>
+                    <div style="font-weight:700;color:#c8d8e8">${c.name}</div>
+                    <div style="font-size:10px;color:#5a7090">${c.role}</div>
+                  </div>
+                </div>
+              </td>
+              ${sysKeys.map(sk=>{
+                const has = c.systems.includes(sk);
+                return `<td style="text-align:center;padding:7px 4px;border-bottom:1px solid #1a2540">
+                  ${has ? `<span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${LS_SYSTEMS[sk].color};opacity:.9" title="${LS_SYSTEMS[sk].short}"></span>` : '<span style="color:#1e2d45">·</span>'}
+                </td>`;
+              }).join('')}
+              <td style="text-align:center;padding:7px 8px;border-bottom:1px solid #1a2540">
+                <span style="background:#1e2d45;color:#7eb8f7;border-radius:10px;padding:2px 7px;font-size:10px;font-weight:700">${c.areas.length}</span>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <div style="margin-top:16px;padding:12px;background:#141d2e;border-radius:8px;border:1px solid #1e2d45;font-size:12px;color:#5a7090;line-height:1.6">
+        💡 <strong style="color:#a0b8cc">Tip:</strong> Click any row to highlight that stakeholder's connections in the map. Hover nodes in the network to see all shared touchpoints.
+      </div>
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   ORG CHART — hierarchy + reporting lines
+═══════════════════════════════════════════════════ */
+
+// Reporting structure for ACME Corp IT
+const ORG_TREE = {
+  id:'_board', name:'Board / Audit Committee', role:'Governance Body', org:'ACME Corp',
+  icon:'🏛️', color:'#334155', unnamed:true, expanded:true,
+  children:[
+    { id:'_ceo', name:'CEO', role:'Chief Executive Officer', org:'ACME Corp',
+      icon:'👑', color:'#334155', unnamed:true, expanded:true,
+      children:[
+        { id:'_cfo', name:'CFO', role:'Chief Financial Officer', org:'ACME Corp',
+          icon:'💰', color:'#334155', unnamed:true, expanded:true,
+          children:[
+            // Finance has dotted-line interest in SAP/Oracle but no direct IT report here
+          ]},
+        { id:'_cio', name:'CIO', role:'Chief Information Officer', org:'ACME Corp',
+          icon:'🖥️', color:'#334155', unnamed:true, expanded:true,
+          children:[
+            { id:'david', expanded:true,          // IT Director
+              children:[
+                { id:'lisa', expanded:true,       // CISO
+                  children:[
+                    { id:'sarah' }                // Identity & Access Manager
+                  ]},
+                { id:'michael' },                 // ITSM / ServiceNow Admin
+                { id:'james'  },                  // Oracle DBA
+              ]},
+          ]},
+        { id:'_hr', name:'HR Director', role:'Head of Human Resources', org:'ACME Corp',
+          icon:'🧑‍💼', color:'#334155', unnamed:true, expanded:true,
+          children:[
+            { id:'priya' }                        // HR Systems Manager
+          ]}
+      ]}
+  ]
+};
+
+// Dotted-line / external relationships drawn separately
+const ORG_DOTTED = [
+  // Emma Walsh (Accenture) → David Chen (functional IT oversight)
+  { from:'emma', to:'david', label:'Managed service (SAP Basis)', color:'#b45309' },
+  // Priya Sharma → David Chen (IT matters functional line)
+  { from:'priya', to:'david', label:'IT systems functional line', color:'#7c3aed' },
+];
+
+// Emma is placed as a standalone external node (not in tree)
+const ORG_EXTERNAL = [
+  { id:'emma', parentId:'david' }
+];
+
+function toggleOrgChart(){
+  // turn off other sub-views first
+  if(appState.showContacts){
+    appState.showContacts = false;
+    document.getElementById('contacts-toggle').classList.remove('active');
+    document.getElementById('contacts-toggle').textContent = '👥 Stakeholders';
+    document.getElementById('legend-contacts').style.display = 'none';
+    document.getElementById('legend-crosscontacts').style.display = 'none';
+    drawContactOverlay(false);
+  }
+  if(appState.showConnMap){
+    appState.showConnMap = false;
+    document.getElementById('connmap-toggle').classList.remove('active');
+    document.getElementById('conn-svg').style.display = 'none';
+    document.getElementById('ls-svg').style.display = '';
+    document.getElementById('ls-legend-sys').style.display = '';
+    document.getElementById('ls-legend-conn').style.display = 'none';
+    d3.select('#conn-svg').selectAll('*').remove();
+  }
+
+  appState.showOrgChart = !appState.showOrgChart;
+  const btn = document.getElementById('org-toggle');
+  btn.classList.toggle('active', appState.showOrgChart);
+
+  const lsSvg  = document.getElementById('ls-svg');
+  const orgSvg = document.getElementById('org-svg');
+  const legendSys = document.getElementById('ls-legend-sys');
+  const legendOrg = document.getElementById('ls-legend-org');
+  const hint = document.getElementById('ls-hint');
+
+  if(appState.showOrgChart){
+    lsSvg.style.display  = 'none';
+    orgSvg.style.display = '';
+    legendSys.style.display = 'none';
+    legendOrg.style.display = '';
+    hint.textContent = 'Click a person to view details & walkthrough';
+    drawOrgChart();
+    showOrgSummary();
+  } else {
+    lsSvg.style.display  = '';
+    orgSvg.style.display = 'none';
+    legendSys.style.display = '';
+    legendOrg.style.display = 'none';
+    hint.textContent = 'Click a system to explore';
+    d3.select('#org-svg').selectAll('*').remove();
+    document.getElementById('ls-panel-empty').style.display   = 'flex';
+    document.getElementById('ls-panel-content').style.display = 'none';
+  }
+}
+
+function showOrgSummary(){
+  const el    = document.getElementById('ls-panel-content');
+  const empty = document.getElementById('ls-panel-empty');
+  empty.style.display = 'none';
+  el.style.display    = 'flex';
+
+  el.innerHTML = `
+    <div class="lsp-header">
+      <div class="lsp-type-badge" style="background:#334155">🏢 IT Organisation</div>
+      <div class="lsp-title" style="font-size:15px">ACME Corp — IT Reporting Structure</div>
+      <div class="lsp-fn">FY2025 audit. Click any person in the chart to see their audit contact details and jump to their walkthrough.</div>
+    </div>
+    <div style="padding:14px 22px;overflow-y:auto;flex:1">
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#4a86c8;margin-bottom:12px">Named Audit Contacts</div>
+      ${CONTACTS.map(c=>{
+        const sysCount = c.systems.filter(sk=>LS_SYSTEMS[sk]?.inScope).length;
+        return `<div onclick="selectOrgPerson('${c.id}')"
+          style="display:flex;align-items:center;gap:10px;padding:9px 10px;margin-bottom:6px;
+                 border-radius:8px;border:1px solid #1e2d45;background:#141d2e;cursor:pointer;transition:background .12s"
+          onmouseover="this.style.background='#1a2540'" onmouseout="this.style.background='#141d2e'">
+          <div style="width:34px;height:34px;border-radius:50%;background:${c.color};display:flex;align-items:center;
+                      justify-content:center;font-size:16px;flex-shrink:0">${c.icon}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;color:#d0dce8;font-size:13px">${c.name}</div>
+            <div style="font-size:11px;color:#5a7090">${c.role}</div>
+            <div style="font-size:10px;color:#3a5070;margin-top:2px">${c.org}${c.crossSys?' · Cross-system':''}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:10px;color:#4a86c8;font-weight:700">${sysCount} system${sysCount!==1?'s':''}</div>
+            <div style="font-size:10px;color:#3a5070">${c.areas.length} IT areas</div>
+          </div>
+        </div>`;
+      }).join('')}
+
+      <div style="margin-top:16px;padding:11px 13px;background:#0d1a10;border:1px solid #1e3a20;border-radius:8px;font-size:12px;color:#4ade80;line-height:1.6">
+        ✅ <strong>Accenture (External):</strong> Emma Walsh (SAP Basis Lead) reports to David Chen via managed-service contract — shown with dashed orange line. Obtain Accenture SOC 2 Type II.
+      </div>
+      <div style="margin-top:8px;padding:11px 13px;background:#180818;border:1px solid #3a1030;border-radius:8px;font-size:12px;color:#c4b5fd;line-height:1.6">
+        🔗 <strong>Functional line:</strong> Priya Sharma (HR Systems) has a dotted-line to David Chen for all IT systems and data flows — shown with dashed purple line.
+      </div>
+    </div>`;
+}
+
+function selectOrgPerson(contactId){
+  const c = CONTACTS.find(x=>x.id===contactId);
+  if(!c) return;
+  // highlight the node in the chart
+  d3.select('#org-svg').selectAll('.org-node-rect')
+    .attr('stroke', nd => nd.data.id===contactId ? '#fff' : null)
+    .attr('stroke-width', nd => nd.data.id===contactId ? 2 : null);
+  // show their contact detail in right panel
+  selectContactNode(contactId);
+}
+
+function drawOrgChart(){
+  const container = document.getElementById('org-svg');
+  const W = container.parentElement.clientWidth  || 700;
+  const H = container.parentElement.clientHeight - 36 || 480;
+
+  d3.select('#org-svg').selectAll('*').remove();
+
+  // ── build D3 hierarchy ──────────────────────────────
+  // Resolve named nodes: if id is in CONTACTS, merge data
+  function resolveNode(raw){
+    const c = CONTACTS.find(x=>x.id===raw.id);
+    return c ? { ...raw, name:c.name, role:c.role, org:c.org, icon:c.icon, color:c.color, named:true }
+             : { ...raw, named:false };
+  }
+  function buildTree(node){
+    const r = resolveNode(node);
+    if(node.children && node.children.length) r.children = node.children.map(buildTree);
+    return r;
+  }
+  const treeData = buildTree(ORG_TREE);
+
+  // ── D3 tree layout ──────────────────────────────────
+  const nodeW = 130, nodeH = 54, hGap = 26, vGap = 70;
+
+  const root = d3.hierarchy(treeData);
+  const treeLayout = d3.tree()
+    .nodeSize([nodeW + hGap, nodeH + vGap])
+    .separation((a,b) => a.parent===b.parent ? 1 : 1.3);
+  treeLayout(root);
+
+  // Centre on canvas
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  root.each(n=>{ minX=Math.min(minX,n.x); maxX=Math.max(maxX,n.x); minY=Math.min(minY,n.y); maxY=Math.max(maxY,n.y); });
+  const treeW = maxX - minX + nodeW;
+  const treeH = maxY - minY + nodeH;
+  const offX  = (W - treeW) / 2 - minX + nodeW/2;
+  const offY  = 24 - minY;
+
+  const svg = d3.select('#org-svg')
+    .attr('viewBox', `0 0 ${W} ${Math.max(H, treeH + 60)}`)
+    .attr('preserveAspectRatio','xMidYMin meet');
+
+  const g = svg.append('g').attr('transform',`translate(${offX},${offY})`);
+
+  // ── draw structural links ────────────────────────────
+  g.append('g').selectAll('path').data(root.links()).join('path')
+    .attr('fill','none')
+    .attr('stroke','#2a4060')
+    .attr('stroke-width',1.5)
+    .attr('d', d3.linkVertical()
+      .x(d=>d.x)
+      .y(d=>d.y + nodeH/2));
+
+  // ── draw dotted-line relationships ──────────────────
+  // Place Emma Walsh as an external node floating to the right of David
+  const davidNode = root.descendants().find(n=>n.data.id==='david');
+  if(davidNode){
+    const emmaC = CONTACTS.find(x=>x.id==='emma');
+    if(emmaC){
+      const ex = davidNode.x + (nodeW + hGap) * 1.1;
+      const ey = davidNode.y + (nodeH + vGap) * 0.85;
+      // dashed line david → emma
+      g.append('path')
+        .attr('fill','none').attr('stroke','#b45309')
+        .attr('stroke-width',1.5).attr('stroke-dasharray','5,4')
+        .attr('d',`M${davidNode.x},${davidNode.y + nodeH/2} C${davidNode.x},${(davidNode.y+ey)/2} ${ex},${(davidNode.y+ey)/2} ${ex},${ey}`);
+      // Emma external node
+      const eg = g.append('g').attr('transform',`translate(${ex},${ey})`).style('cursor','pointer')
+        .on('click',()=>selectOrgPerson('emma'));
+      eg.append('rect').attr('class','org-node-rect')
+        .attr('x',-nodeW/2).attr('y',0).attr('width',nodeW).attr('height',nodeH)
+        .attr('rx',8).attr('fill','#1a0e00').attr('stroke','#b45309').attr('stroke-width',1.5);
+      eg.append('text').attr('x',-nodeW/2+10).attr('y',15)
+        .attr('font-size',16).attr('dominant-baseline','middle').text(emmaC.icon);
+      eg.append('text').attr('x',-nodeW/2+32).attr('y',13)
+        .attr('font-size',11).attr('font-weight','700').attr('fill','#d0a060').text(emmaC.name);
+      eg.append('text').attr('x',-nodeW/2+32).attr('y',27)
+        .attr('font-size',9).attr('fill','#7a5030').text(emmaC.role.slice(0,20));
+      eg.append('text').attr('x',-nodeW/2+32).attr('y',38)
+        .attr('font-size',9).attr('fill','#b45309').attr('font-style','italic').text('Accenture · External');
+      // badge
+      eg.append('rect').attr('x',nodeW/2-30).attr('y',-7).attr('width',32).attr('height',14)
+        .attr('rx',7).attr('fill','#3a1800').attr('stroke','#b45309');
+      eg.append('text').attr('x',nodeW/2-14).attr('y',-1)
+        .attr('text-anchor','middle').attr('font-size',8).attr('font-weight','700').attr('fill','#f59e0b').text('EXT');
+    }
+  }
+
+  // Priya dotted line → David (functional)
+  const priyaNode = root.descendants().find(n=>n.data.id==='priya');
+  if(priyaNode && davidNode){
+    g.append('path')
+      .attr('fill','none').attr('stroke','#7c3aed')
+      .attr('stroke-width',1.5).attr('stroke-dasharray','5,4')
+      .attr('d',()=>{
+        const sx=priyaNode.x, sy=priyaNode.y;
+        const tx=davidNode.x, ty=davidNode.y+nodeH;
+        const my=(sy+ty)/2;
+        return `M${sx},${sy} C${sx},${my} ${tx},${my} ${tx},${ty}`;
+      });
+    // small label mid-line
+    const mx=(priyaNode.x+davidNode.x)/2, my=(priyaNode.y+davidNode.y+nodeH)/2;
+    g.append('text').attr('x',mx).attr('y',my-4)
+      .attr('text-anchor','middle').attr('font-size',8).attr('fill','#7c3aed').attr('opacity',.7)
+      .text('IT functional');
+  }
+
+  // ── draw nodes ───────────────────────────────────────
+  const nodes = g.append('g').selectAll('g').data(root.descendants()).join('g')
+    .attr('transform', d=>`translate(${d.x},${d.y})`)
+    .style('cursor', d => d.data.named ? 'pointer' : 'default')
+    .on('click', (evt,d) => { if(d.data.named) selectOrgPerson(d.data.id); });
+
+  // Node background
+  nodes.append('rect').attr('class','org-node-rect')
+    .attr('x',-nodeW/2).attr('y',0)
+    .attr('width',nodeW).attr('height',nodeH).attr('rx',8)
+    .attr('fill', d => d.data.named ? d.data.color+'22' : '#1a2035')
+    .attr('stroke', d => d.data.named ? d.data.color : '#2a3d55')
+    .attr('stroke-width', d => d.data.named ? 1.5 : 1);
+
+  // Icon
+  nodes.append('text').attr('x',-nodeW/2+10).attr('y',15)
+    .attr('font-size',16).attr('dominant-baseline','middle')
+    .text(d => d.data.icon || '');
+
+  // Name
+  nodes.append('text').attr('x',-nodeW/2+32).attr('y',13)
+    .attr('font-size', d => d.data.named ? 11 : 10)
+    .attr('font-weight','700')
+    .attr('fill', d => d.data.named ? '#d0dce8' : '#5a7090')
+    .text(d => d.data.name);
+
+  // Role
+  nodes.append('text').attr('x',-nodeW/2+32).attr('y',26)
+    .attr('font-size',9)
+    .attr('fill', d => d.data.named ? '#7a9ab8' : '#3a5070')
+    .text(d => (d.data.role||'').slice(0,22));
+
+  // Org badge for named nodes
+  nodes.filter(d=>d.data.named).append('text').attr('x',-nodeW/2+32).attr('y',39)
+    .attr('font-size',8).attr('fill',d=>d.data.org==='ACME Corp'?'#4a6080':'#b45309')
+    .attr('font-style','italic')
+    .text(d=>d.data.org);
+
+  // Hover ring for named nodes
+  nodes.filter(d=>d.data.named)
+    .on('mouseover', function(){ d3.select(this).select('rect').attr('stroke-width',2.5); })
+    .on('mouseout',  function(evt,d){ d3.select(this).select('rect').attr('stroke-width',1.5); });
+
+  // Depth label (level)
+  const depthLabels = ['Board','Executive','Senior Leader','Manager/Lead'];
+  const depths = [...new Set(root.descendants().map(n=>n.depth))];
+  depths.forEach(dep=>{
+    if(depthLabels[dep]){
+      const nodesAtDepth = root.descendants().filter(n=>n.depth===dep);
+      const avgY = nodesAtDepth.reduce((s,n)=>s+n.y,0)/nodesAtDepth.length;
+      g.append('text')
+        .attr('x', minX - nodeW/2 - 10 + offX - offX)  // left margin
+        .attr('y', avgY + nodeH/2)
+        .attr('text-anchor','end').attr('dominant-baseline','middle')
+        .attr('font-size',9).attr('fill','#2a3d55').attr('font-weight','700')
+        .text(depthLabels[dep]);
+    }
+  });
+}
+
+function highlightContact(contactId){
+  // Highlight in the connection map SVG
+  d3.select('#conn-svg').selectAll('.conn-node')
+    .attr('opacity', d => d.id === contactId ? 1 : 0.3);
+  d3.select('#conn-svg').selectAll('.conn-link')
+    .attr('opacity', d => (d.source.id === contactId || d.target.id === contactId) ? 1 : 0.1);
+  d3.select('#conn-svg').selectAll('.conn-label')
+    .attr('opacity', d => d.id === contactId ? 1 : 0.3);
+  setTimeout(()=>{
+    d3.select('#conn-svg').selectAll('.conn-node,.conn-link,.conn-label').attr('opacity',1);
+  }, 2500);
+}
+
+function drawConnectionMap(){
+  const container = document.getElementById('conn-svg');
+  const W = container.parentElement.clientWidth || 680;
+  const H = container.parentElement.clientHeight - 40 || 460;
+
+  d3.select('#conn-svg').selectAll('*').remove();
+  const svg = d3.select('#conn-svg')
+    .attr('viewBox', `0 0 ${W} ${H}`)
+    .attr('preserveAspectRatio','xMidYMid meet');
+
+  // Build bipartite graph: contacts (left) + systems (right)
+  const sysKeys = Object.keys(LS_SYSTEMS).filter(k=>LS_SYSTEMS[k].inScope);
+
+  const contactNodes = CONTACTS.map((c,i)=>({
+    id: c.id, label: c.name.split(' ')[0]+'\n'+c.name.split(' ')[1],
+    fullName: c.name, role: c.role, icon: c.icon,
+    color: c.color, kind:'contact', crossSys: c.crossSys,
+    x: W * 0.22, y: (i + 0.5) * (H / CONTACTS.length)
+  }));
+
+  const sysNodes = sysKeys.map((sk,i)=>({
+    id: sk, label: LS_SYSTEMS[sk].short,
+    color: LS_SYSTEMS[sk].color, kind:'system',
+    x: W * 0.72, y: (i + 0.5) * (H / sysKeys.length)
+  }));
+
+  const nodes = [...contactNodes, ...sysNodes];
+
+  // Edges: contact → system (weight = # areas covered for that system)
+  const links = [];
+  CONTACTS.forEach(c=>{
+    c.systems.filter(sk=>sysKeys.includes(sk)).forEach(sk=>{
+      links.push({
+        source: c.id, target: sk,
+        weight: c.areas.length,
+        areas: c.areas
+      });
+    });
+  });
+
+  const nodeMap = Object.fromEntries(nodes.map(n=>[n.id,n]));
+  const linkObjs = links.map(l=>({...l, source: nodeMap[l.source], target: nodeMap[l.target]}));
+
+  // Add defs for arrowhead
+  svg.append('defs').append('marker')
+    .attr('id','conn-arr').attr('viewBox','0 -4 8 8').attr('refX',8).attr('refY',0)
+    .attr('markerWidth',6).attr('markerHeight',6).attr('orient','auto')
+    .append('path').attr('d','M0,-4L8,0L0,4').attr('fill','#2a3d55');
+
+  // Draw links
+  const linkSel = svg.append('g').selectAll('path').data(linkObjs).join('path')
+    .attr('class','conn-link')
+    .attr('fill','none')
+    .attr('stroke', d => d.source.color || '#4a6080')
+    .attr('stroke-opacity', 0.45)
+    .attr('stroke-width', d => 1 + d.weight * 0.3)
+    .attr('d', d=>{
+      const mx = (d.source.x + d.target.x) / 2;
+      return `M${d.source.x},${d.source.y} C${mx},${d.source.y} ${mx},${d.target.y} ${d.target.x},${d.target.y}`;
+    });
+
+  // Draw system nodes
+  const sysG = svg.append('g').selectAll('g').data(sysNodes).join('g')
+    .attr('class','conn-node')
+    .attr('transform', d=>`translate(${d.x},${d.y})`)
+    .style('cursor','pointer')
+    .on('mouseover', function(evt,d){
+      linkSel.attr('opacity', l => (l.target.id === d.id) ? 1 : 0.08);
+    })
+    .on('mouseout', ()=>{ linkSel.attr('opacity',1); });
+
+  sysG.append('rect')
+    .attr('x',-32).attr('y',-16).attr('width',64).attr('height',32)
+    .attr('rx',8).attr('fill', d=>d.color).attr('opacity',0.9);
+  sysG.append('text')
+    .attr('text-anchor','middle').attr('dominant-baseline','middle')
+    .attr('font-size',11).attr('font-weight','700').attr('fill','#fff')
+    .text(d=>d.label);
+
+  // Count connections per system node
+  sysG.append('circle')
+    .attr('cx',30).attr('cy',-14).attr('r',9)
+    .attr('fill','#111926').attr('stroke', d=>d.color).attr('stroke-width',1.5);
+  sysG.append('text')
+    .attr('x',30).attr('y',-14)
+    .attr('text-anchor','middle').attr('dominant-baseline','middle')
+    .attr('font-size',9).attr('font-weight','700').attr('fill','#c8d8e8')
+    .text(d=> CONTACTS.filter(c=>c.systems.includes(d.id)).length);
+
+  // Draw contact nodes
+  const CR = 20;
+  const contactG = svg.append('g').selectAll('g').data(contactNodes).join('g')
+    .attr('class','conn-node')
+    .attr('transform', d=>`translate(${d.x},${d.y})`)
+    .style('cursor','pointer')
+    .on('mouseover', function(evt,d){
+      linkSel.attr('opacity', l => (l.source.id === d.id) ? 1 : 0.08);
+      svg.selectAll('.conn-label').attr('opacity', nd => nd.id === d.id ? 1 : 0.3);
+    })
+    .on('mouseout', ()=>{
+      linkSel.attr('opacity',1);
+      svg.selectAll('.conn-label').attr('opacity',1);
+    })
+    .on('click', (evt,d)=> highlightContact(d.id));
+
+  contactG.append('circle')
+    .attr('r', CR).attr('fill', d=>d.color)
+    .attr('stroke', d=> d.crossSys ? '#f43f5e' : 'rgba(255,255,255,.2)')
+    .attr('stroke-width', d=> d.crossSys ? 2.5 : 1);
+  contactG.append('text')
+    .attr('text-anchor','middle').attr('dominant-baseline','middle')
+    .attr('font-size',14).text(d=>d.icon);
+
+  // Labels to the left of contacts
+  const labelG = svg.append('g').selectAll('g').data(contactNodes).join('g')
+    .attr('class','conn-label')
+    .attr('transform', d=>`translate(${d.x - CR - 8},${d.y})`);
+  labelG.append('text')
+    .attr('text-anchor','end').attr('dominant-baseline','middle')
+    .attr('font-size',11).attr('font-weight','700').attr('fill','#c8d8e8')
+    .text(d=>d.fullName);
+  labelG.append('text')
+    .attr('text-anchor','end').attr('y',13)
+    .attr('font-size',9).attr('fill','#5a7090')
+    .text(d=>d.role.slice(0,28));
+
+  // Column headers
+  svg.append('text').attr('x', W*0.22).attr('y',14)
+    .attr('text-anchor','middle').attr('font-size',10).attr('font-weight','700')
+    .attr('fill','#4a6080').attr('text-transform','uppercase').text('STAKEHOLDERS');
+  svg.append('text').attr('x', W*0.72).attr('y',14)
+    .attr('text-anchor','middle').attr('font-size',10).attr('font-weight','700')
+    .attr('fill','#4a6080').text('IN-SCOPE SYSTEMS');
+
+  // Cross-system label
+  svg.append('text').attr('x', W*0.22 + 28).attr('y', H - 8)
+    .attr('font-size',9).attr('fill','#f43f5e').text('● red ring = cross-system stakeholder');
+}
+
+function drawContactOverlay(show){
+  const svg = d3.select('#ls-svg');
+  svg.select('#contact-overlay').remove();
+  if(!show) return;
+
+  const g = svg.append('g').attr('id','contact-overlay');
+  const CR = 22; // contact node radius
+
+  CONTACTS.forEach(c => {
+    const [cx,cy] = c.svgPos;
+    // Draw edges to primary system(s)
+    const primarySys = c.crossSys ? c.systems : [c.systems[0]];
+    primarySys.forEach(sysKey => {
+      if(!LS_POS[sysKey]) return;
+      const [sx,sy] = LS_POS[sysKey];
+      g.append('line')
+        .attr('x1',cx).attr('y1',cy).attr('x2',sx).attr('y2',sy)
+        .attr('stroke', c.color).attr('stroke-width',1.5)
+        .attr('stroke-dasharray','4,3').attr('opacity',.5);
+    });
+
+    // Contact node group
+    const ng = g.append('g')
+      .attr('transform',`translate(${cx},${cy})`)
+      .style('cursor','pointer')
+      .on('click', ()=>selectContactNode(c.id));
+
+    ng.append('circle')
+      .attr('r',CR).attr('fill',c.color)
+      .attr('stroke','#fff').attr('stroke-width',2)
+      .attr('filter','drop-shadow(0 2px 5px rgba(0,0,0,.2))');
+
+    ng.append('text').attr('text-anchor','middle').attr('dominant-baseline','central')
+      .attr('font-size',13).text(c.icon);
+
+    // Name label below
+    ng.append('text').attr('text-anchor','middle').attr('y', CR+11)
+      .attr('font-size',9).attr('font-weight','700').attr('fill','#c8d8e8')
+      .text(c.name.split(' ')[0]);
+    ng.append('text').attr('text-anchor','middle').attr('y', CR+21)
+      .attr('font-size',8.5).attr('fill','#7a9ab8')
+      .text(c.role.split('/')[0].trim().slice(0,16));
+  });
+}
+
+function selectContactNode(contactId){
+  const c = CONTACTS.find(x=>x.id===contactId);
+  if(!c) return;
+  appState.lsSelected = null;
+  document.getElementById('ls-panel-empty').style.display = 'none';
+  const el = document.getElementById('ls-panel-content');
+  el.style.display = 'flex';
+  el.style.flexDirection = 'column';
+
+  const areasHtml = c.areas.map(a=>`
+    <span class="contact-area-chip" style="background:${a==='overview'?'#64748b':(AREAS[a]?.color||'#64748b')}">${areaLabel(a)}</span>`).join('');
+
+  const sysHtml = c.systems.map(sk=>{
+    const s = LS_SYSTEMS[sk];
+    return s ? `<span style="padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;background:${s.color};color:#fff">${s.short}</span>` : '';
+  }).join(' ');
+
+  el.innerHTML = `
+    <div class="lsp-header">
+      <div class="lsp-type-badge" style="background:${c.color}">${c.icon} ${c.crossSys?'Cross-system':'System'} Contact</div>
+      <div class="lsp-title">${c.name}</div>
+      <div class="lsp-fn">${c.role} · <em>${c.org}</em></div>
+    </div>
+    <div style="padding:12px 22px 0">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#7c3aed;margin-bottom:8px">Systems covered</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px">${sysHtml}</div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#7c3aed;margin-bottom:8px">IT areas they can speak to</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px">${areasHtml}</div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#7c3aed;margin-bottom:8px">Interview notes</div>
+      <div style="font-size:12.5px;color:#a0b8cc;line-height:1.6;background:#141d2e;padding:10px 12px;border-radius:8px;border:1px solid #1e2d45;margin-bottom:16px">${c.notes}</div>
+    </div>
+    <div style="padding:0 22px 18px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#4a86c8;margin-bottom:10px">📋 Walkthrough areas</div>
+      ${c.systems.filter(sk=>LS_SYSTEMS[sk]?.inScope).map(sk=>{
+        const s = LS_SYSTEMS[sk];
+        return c.areas.map(a=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #1a2540;font-size:12px">
+            <span style="width:6px;height:6px;border-radius:50%;background:${s.color};flex-shrink:0;display:inline-block"></span>
+            <span style="color:#a0b8cc;flex:1"><strong>${s.short}</strong> — ${areaLabel(a)}</span>
+            <a class="wt-link" href="audit_tracker.html?person=${c.id}&sys=${sk}&area=${a}" title="Open Module C — ${c.name}">▶ Walkthrough</a>
+          </div>`).join('');
+      }).join('')}
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   LANDSCAPE — D3 SVG
+═══════════════════════════════════════════════════ */
+const LSW = 960, LSH = 480;
+const LS_R = 44;
+
+function initLandscape(){
+  const svg = d3.select('#ls-svg')
+    .attr('viewBox',`0 0 ${LSW} ${LSH}`)
+    .attr('preserveAspectRatio','xMidYMid meet');
+
+  const defs = svg.append('defs');
+  // Arrowhead
+  ['#4a86c8','#94a3b8'].forEach((col,i) => {
+    defs.append('marker')
+      .attr('id',`arr${i}`).attr('markerWidth',8).attr('markerHeight',6)
+      .attr('refX',8).attr('refY',3).attr('orient','auto')
+      .append('polygon')
+      .attr('points','0 0, 8 3, 0 6')
+      .attr('fill',col).attr('opacity',.7);
+  });
+
+  const g = svg.append('g');
+
+  // ── Edges ─────────────────────────────────────────────────────
+  LS_EDGES.forEach(([from, to, label, dashed]) => {
+    const [x1,y1] = LS_POS[from];
+    const [x2,y2] = LS_POS[to];
+    // Shorten line so it doesn't overlap node circles
+    const dx = x2-x1, dy = y2-y1;
+    const len = Math.sqrt(dx*dx+dy*dy);
+    const pad = LS_R + 8;
+    const sx = x1 + dx/len*pad, sy = y1 + dy/len*pad;
+    const ex = x2 - dx/len*pad, ey = y2 - dy/len*pad;
+
+    // For bidirectional (dashed/migration), draw two short arrows
+    const isBidir = dashed;
+    const strokeColor = '#4a86c8';
+    const edgeOpacity = 0.55;
+
+    const line = g.append('line')
+      .attr('x1',sx).attr('y1',sy).attr('x2',ex).attr('y2',ey)
+      .attr('stroke', strokeColor)
+      .attr('stroke-width', 1.8)
+      .attr('opacity', edgeOpacity)
+      .attr('stroke-dasharray', dashed ? '7,4' : null)
+      .attr('marker-end', dashed ? 'url(#arr1)' : 'url(#arr0)');
+
+    if(isBidir){
+      g.append('line')
+        .attr('x1',ex).attr('y1',ey).attr('x2',sx).attr('y2',sy)
+        .attr('stroke','#94a3b8').attr('stroke-width',1.8)
+        .attr('opacity',edgeOpacity)
+        .attr('stroke-dasharray','7,4')
+        .attr('marker-end','url(#arr1)');
+    }
+
+    // Edge label at midpoint
+    const mx = (sx+ex)/2, my = (sy+ey)/2;
+    const angle = Math.atan2(dy,dx)*180/Math.PI;
+    const flip = angle > 90 || angle < -90;
+    g.append('text')
+      .attr('x',mx).attr('y',my)
+      .attr('text-anchor','middle').attr('dominant-baseline','central')
+      .attr('font-size',9.5).attr('font-weight','600')
+      .attr('fill', dashed ? '#64748b' : '#4a6090')
+      .attr('transform',`rotate(${flip?angle+180:angle},${mx},${my})`)
+      .attr('dy',-5)
+      .text(label);
+  });
+
+  // ── System nodes ──────────────────────────────────────────────
+  Object.entries(LS_POS).forEach(([key,[cx,cy]]) => {
+    const s = LS_SYSTEMS[key];
+    const ng = g.append('g')
+      .attr('transform',`translate(${cx},${cy})`)
+      .style('cursor','pointer')
+      .on('click', ()=>selectLandscapeNode(key))
+      .on('mouseenter', function(){ d3.select(this).select('circle.main-c').attr('r',LS_R+4); })
+      .on('mouseleave', function(){
+        const r = appState.lsSelected===key ? LS_R+6 : LS_R;
+        d3.select(this).select('circle.main-c').attr('r',r);
+      });
+
+    // Selection ring
+    ng.append('circle').attr('class','sel-ring')
+      .attr('r',LS_R+10).attr('fill','none')
+      .attr('stroke',s.color).attr('stroke-width',3).attr('opacity',0);
+
+    // Main circle
+    ng.append('circle').attr('class','main-c')
+      .attr('r',LS_R)
+      .attr('fill', s.inScope ? s.color : '#e2e8f0')
+      .attr('stroke','#fff').attr('stroke-width',3)
+      .attr('filter','drop-shadow(0 3px 8px rgba(0,0,0,.2))');
+
+    // Out-of-scope overlay
+    if(!s.inScope){
+      ng.append('circle').attr('r',LS_R)
+        .attr('fill','rgba(255,255,255,.35)');
+    }
+
+    // Short name
+    ng.append('text').attr('text-anchor','middle').attr('y',-7)
+      .attr('font-size',11).attr('font-weight','800')
+      .attr('fill', s.inScope ? '#fff' : '#94a3b8')
+      .text(s.short);
+
+    // Type badge
+    ng.append('text').attr('text-anchor','middle').attr('y',8)
+      .attr('font-size',8.5).attr('fill', s.inScope ? 'rgba(255,255,255,.8)' : '#94a3b8')
+      .text(s.type);
+
+    // In-scope indicator dot
+    if(s.inScope){
+      ng.append('circle')
+        .attr('cx',LS_R-8).attr('cy',-(LS_R-8))
+        .attr('r',7).attr('fill','#22c55e').attr('stroke','#fff').attr('stroke-width',2);
+      ng.append('text')
+        .attr('x',LS_R-8).attr('y',-(LS_R-8))
+        .attr('text-anchor','middle').attr('dominant-baseline','central')
+        .attr('font-size',7).attr('fill','#fff').attr('font-weight','800')
+        .text('✓');
+    }
+  });
+}
+
+function selectLandscapeNode(key){
+  appState.lsSelected = key;
+
+  // Update selection rings
+  Object.keys(LS_POS).forEach(k => {
+    d3.select(`#ls-svg`).selectAll('g').filter(function(){
+      // We'll use a simpler approach — just update all sel-rings
+      return false;
+    });
+  });
+  // Reset all rings
+  d3.select('#ls-svg').selectAll('circle.sel-ring').attr('opacity',0);
+  d3.select('#ls-svg').selectAll('circle.main-c').each(function(d,i){
+    // Reset all to base radius
+    d3.select(this).attr('r', LS_R);
+  });
+
+  // Highlight selected — find by transform position
+  const pos = LS_POS[key];
+  d3.select('#ls-svg').selectAll('g').each(function(){
+    const t = d3.select(this).attr('transform');
+    if(t === `translate(${pos[0]},${pos[1]})`){
+      d3.select(this).select('circle.sel-ring').attr('opacity',.5);
+      d3.select(this).select('circle.main-c').attr('r',LS_R+6);
+    }
+  });
+
+  renderLandscapePanel(key);
+}
+
+function renderLandscapePanel(key){
+  const s = LS_SYSTEMS[key];
+  document.getElementById('ls-panel-empty').style.display = 'none';
+  const el = document.getElementById('ls-panel-content');
+  el.style.display = 'flex';
+  el.style.flexDirection = 'column';
+
+  const scopeClass = s.inScope ? 'in-scope' : 'out-scope';
+  const scopeText  = s.inScope ? '✓ In scope — FY2025 ITGC audit' : '○ Out of scope — supporting system only';
+
+  const flowsHtml = s.flows.map(f=>`
+    <div class="lsp-flow-row">
+      <span class="flow-dir">${f.dir}</span>
+      <span class="flow-desc"><strong>${f.peer}:</strong> ${f.desc}</span>
+      <span class="flow-freq">${f.freq}</span>
+    </div>`).join('');
+
+  const drillBtn = s.inScope
+    ? `<button class="lsp-drill-btn" onclick="showDetail('${key}')">
+         🔍 View IT Areas for ${s.short} →
+       </button>`
+    : `<button class="lsp-drill-btn disabled" disabled>
+         IT Areas not available (out of scope)
+       </button>`;
+
+  // Contacts for this system
+  const sysContacts = contactsForSystem(key);
+  const contactsHtml = sysContacts.length ? `
+    <div class="lsp-contacts">
+      <div class="lsp-contacts-title">👥 Stakeholders to interview</div>
+      ${sysContacts.map(c=>`
+        <div class="contact-card ${c.crossSys?'cross-sys':''}" onclick="selectContactNode('${c.id}')">
+          <div class="contact-avatar" style="background:${c.color}">${c.icon}</div>
+          <div class="contact-info">
+            <div class="contact-name">${c.name}</div>
+            <div class="contact-org" style="background:${c.crossSys?'#2a0a14':'#1a0a30'};color:${c.crossSys?'#f87171':'#c4b5fd'}">${c.org}</div>
+            <div class="contact-role">${c.role}</div>
+            <div class="contact-areas">${c.areas.map(a=>`<span class="contact-area-chip" style="background:${a==='overview'?'#64748b':(AREAS[a]?.color||'#64748b')}">${areaLabel(a)}</span>`).join('')}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <button class="contact-wt-btn" onclick="event.stopPropagation();window.location.href='audit_tracker.html?person=${c.id}&sys=${key}'" title="Module C — ${c.name}">▶ Walkthrough</button>
+          </div>
+        </div>`).join('')}
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="lsp-header">
+      <div class="lsp-type-badge" style="background:${s.typeColor}">${s.type}</div>
+      <div class="lsp-title">${s.label}</div>
+      <div class="lsp-fn">${s.function}</div>
+    </div>
+    <div class="lsp-scope-strip ${scopeClass}">${scopeText}</div>
+    <div class="lsp-meta">
+      <div class="lsp-meta-row"><span class="lsp-meta-label">Hosting</span><span class="lsp-meta-val">${s.hosting}</span></div>
+      <div class="lsp-meta-row"><span class="lsp-meta-label">Owner</span><span class="lsp-meta-val">${s.owner}</span></div>
+      ${s.outsourced ? `<div class="lsp-meta-row"><span class="lsp-meta-label">⚠️ Managed</span><span class="lsp-meta-val">${s.outsourced_note}</span></div>` : ''}
+      <div class="lsp-meta-row"><span class="lsp-meta-label">Scope note</span><span class="lsp-meta-val">${s.scope_note}</span></div>
+    </div>
+    ${s.flows.length ? `<div class="lsp-flows"><div class="lsp-flows-title">Data Flows & Integrations</div>${flowsHtml}</div>` : ''}
+    ${contactsHtml}
+    ${drillBtn}
+  `;
+}
+
+/* ═══════════════════════════════════════════════════
+   DETAIL — D3 radial network (single system, centred)
+═══════════════════════════════════════════════════ */
+const DW = 700, DH = 490;
+const R_SYS = 50, R_AREA = 28, R_ORBIT = 175;
+const DET_CENTER = [350, 245];
+
+let detailSvg = null;
+
+function areaPos(i){
+  const [cx,cy] = DET_CENTER;
+  const n = AREA_ORDER.length;
+  const angle = -Math.PI/2 + (2*Math.PI/n)*i;
+  return [cx + R_ORBIT*Math.cos(angle), cy + R_ORBIT*Math.sin(angle)];
+}
+
+function initDetailNetwork(sysKey){
+  appState.detailSelected = null;
+  const container = d3.select('#network-col');
+  d3.select('#svg-map').remove();
+  const newSvg = container.insert('svg','div')
+    .attr('id','svg-map')
+    .attr('viewBox',`0 0 ${DW} ${DH}`)
+    .attr('preserveAspectRatio','xMidYMid meet')
+    .style('flex','1').style('width','100%').style('overflow','visible').style('cursor','default');
+
+  detailSvg = newSvg;
+  const sInfo = LS_SYSTEMS[sysKey];
+  const [cx,cy] = DET_CENTER;
+  const g = newSvg.append('g');
+
+  // Cross-link dashed edges
+  CROSS_LINKS.forEach(cl => {
+    const p1 = areaPos(AREA_ORDER.indexOf(cl.a));
+    const p2 = areaPos(AREA_ORDER.indexOf(cl.b));
+    g.append('line')
+      .attr('x1',p1[0]).attr('y1',p1[1])
+      .attr('x2',p2[0]).attr('y2',p2[1])
+      .attr('stroke','#cbd5e1').attr('stroke-width',1.5)
+      .attr('stroke-dasharray','5,4').attr('opacity',0.7)
+      .attr('class','cl-edge');
+  });
+
+  // Spoke edges: centre → area
+  AREA_ORDER.forEach((area,i) => {
+    const [ax,ay] = areaPos(i);
+    g.append('line')
+      .attr('x1',cx).attr('y1',cy).attr('x2',ax).attr('y2',ay)
+      .attr('stroke',sInfo.color).attr('stroke-width',2).attr('opacity',0.3)
+      .attr('class','spoke-edge');
+  });
+
+  // Area nodes
+  AREA_ORDER.forEach((area,i) => {
+    const [ax,ay] = areaPos(i);
+    const aInfo = AREAS[area];
+    const ng = g.append('g')
+      .attr('class','node-area')
+      .attr('data-area',area)
+      .attr('transform',`translate(${ax},${ay})`)
+      .style('cursor','pointer')
+      .on('click',()=>selectAreaNode(sysKey,area))
+      .on('mouseenter',function(){
+        if(!(appState.detailSelected?.area===area)) d3.select(this).select('circle').attr('r',R_AREA+4);
+      })
+      .on('mouseleave',function(){
+        const r = appState.detailSelected?.area===area ? R_AREA+6 : R_AREA;
+        d3.select(this).select('circle').attr('r',r);
+      });
+
+    ng.append('circle').attr('r',R_AREA)
+      .attr('fill',aInfo.color).attr('stroke','#fff').attr('stroke-width',2.5)
+      .attr('filter','drop-shadow(0 2px 4px rgba(0,0,0,.15))');
+
+    ng.append('text').attr('text-anchor','middle').attr('dominant-baseline','central')
+      .attr('font-size',16).attr('y',-1).text(aInfo.icon);
+
+    const labelY = R_AREA + 10;
+    const words = aInfo.label.split(' ');
+    if(words.length <= 2){
+      ng.append('text').attr('text-anchor','middle').attr('y',labelY)
+        .attr('font-size',10).attr('font-weight','600').attr('fill','#a0b8d0').text(aInfo.label);
+    } else {
+      ng.append('text').attr('text-anchor','middle').attr('y',labelY)
+        .attr('font-size',10).attr('font-weight','600').attr('fill','#a0b8d0').text(words.slice(0,2).join(' '));
+      ng.append('text').attr('text-anchor','middle').attr('y',labelY+13)
+        .attr('font-size',10).attr('font-weight','600').attr('fill','#a0b8d0').text(words.slice(2).join(' '));
+    }
+  });
+
+  // System centre node
+  const sg = g.append('g')
+    .attr('transform',`translate(${cx},${cy})`)
+    .style('cursor','pointer')
+    .on('click',()=>selectAreaNode(sysKey,null))
+    .on('mouseenter',function(){ d3.select(this).select('circle.sys-main').attr('r',R_SYS+4); })
+    .on('mouseleave',function(){
+      const r = !appState.detailSelected ? R_SYS+6 : R_SYS;
+      d3.select(this).select('circle.sys-main').attr('r',r);
+    });
+
+  sg.append('circle').attr('class','sys-sel-ring')
+    .attr('r',R_SYS+10).attr('fill','none')
+    .attr('stroke',sInfo.color).attr('stroke-width',3).attr('opacity',0);
+
+  sg.append('circle').attr('class','sys-main')
+    .attr('r',R_SYS).attr('fill',sInfo.color)
+    .attr('stroke','#fff').attr('stroke-width',3)
+    .attr('filter','drop-shadow(0 3px 8px rgba(0,0,0,.25))');
+
+  sg.append('text').attr('text-anchor','middle').attr('y',-8)
+    .attr('font-size',13).attr('font-weight','800').attr('fill','#fff').text(sInfo.short);
+
+  sg.append('text').attr('text-anchor','middle').attr('y',8)
+    .attr('font-size',9).attr('fill','rgba(255,255,255,.8)')
+    .text(sInfo.outsourced ? '(Managed Svc)' : sInfo.inScope ? '(In scope)' : '');
+
+  sg.append('text').attr('text-anchor','middle').attr('y',20)
+    .attr('font-size',8).attr('fill','rgba(255,255,255,.65)').text('← click for overview');
+}
+
+function highlightDetailNode(area){
+  if(!detailSvg) return;
+  // Reset
+  detailSvg.selectAll('.node-area circle').attr('opacity',1).attr('r',R_AREA);
+  detailSvg.select('.sys-sel-ring').attr('opacity',0);
+  detailSvg.select('.sys-main').attr('r',R_SYS);
+
+  if(area === null){
+    detailSvg.select('.sys-sel-ring').attr('opacity',.5);
+    detailSvg.select('.sys-main').attr('r',R_SYS+6);
+    return;
+  }
+  // Dim others, highlight selected
+  detailSvg.selectAll('.node-area').each(function(){
+    const a = d3.select(this).attr('data-area');
+    if(a !== area) d3.select(this).select('circle').attr('opacity',.35);
+    else d3.select(this).select('circle').attr('r',R_AREA+6);
+  });
+}
+
+function selectAreaNode(sys, area){
+  appState.detailSelected = area !== null ? { area } : null;
+  highlightDetailNode(area);
+  renderDetailPanel(sys, area);
+}
+
+function renderDetailPanel(sys, area){
+  const sInfo  = LS_SYSTEMS[sys];
+  const bank   = area ? QUESTION_BANK[area] : QUESTION_BANK.overview;
+  const aLabel = area ? AREAS[area].label : 'System Overview';
+  const aIcon  = area ? AREAS[area].icon  : '🏢';
+  const priorY = area ? PRIOR_YEAR[sys][area] : PRIOR_YEAR[sys].overview;
+  const areaKey = area || 'overview';
+
+  const xlinks = area ? CROSS_LINKS.filter(c=>c.a===area||c.b===area).map(c=>({
+    other: c.a===area ? c.b : c.a, reason: c.reason
+  })) : [];
+
+  const showTP = sInfo.outsourced && (area === null || ['batch','dev','priv'].includes(area));
+  const qs = bank.questions;
+  const checkedCount = qs.filter((_,i) => appState.checked[qKey(sys,areaKey,i)]).length;
+
+  // Key contacts for this system + area
+  const keyContacts = contactsForArea(sys, area);
+
+  let html = `
+    <div class="panel-header">
+      <div class="sys-pill" style="background:${sInfo.color}">${sInfo.label}</div>
+      <div class="panel-area-title"><span class="area-icon">${aIcon}</span>${aLabel}</div>
+    </div>`;
+
+  // Contact strip — who to interview for this area
+  if(keyContacts.length){
+    html += keyContacts.map(c=>`
+    <div class="area-contact-strip">
+      <div class="area-contact-avatar" style="background:${c.color}">${c.icon}</div>
+      <div class="area-contact-info">
+        <div class="area-contact-name">${c.name}</div>
+        <div class="area-contact-role">${c.role} · ${c.org}</div>
+      </div>
+      <a class="wt-link" href="audit_tracker.html?person=${c.id}&sys=${sys}&area=${area||'overview'}">▶ Module C</a>
+    </div>`).join('');
+  }
+
+  if(showTP){
+    html += `<div class="tp-banner" style="display:block">
+      ⚠️ <strong>Third-party managed:</strong> ${sInfo.outsourced_note}
+    </div>`;
+  }
+
+  html += `<div class="findings-box">
+    <div class="findings-label">📋 Prior Year Context</div>
+    <div class="findings-text">${priorY}</div>
+  </div>`;
+
+  html += `<div class="section-wrap">
+    <div class="section-hdr">Interview Questions
+      <span class="cov-chip">${checkedCount} / ${qs.length} covered</span>
+    </div>`;
+
+  qs.forEach((q,i) => {
+    const k = qKey(sys,areaKey,i);
+    const checked = appState.checked[k];
+    html += `<div class="q-item" onclick="toggleQ('${k}','${sys}','${areaKey}')">
+      <div class="q-cb ${checked?'checked':''}">${checked?'✓':''}</div>
+      <div class="q-text ${checked?'checked-text':''}">${q.q}
+        ${q.fu.length ? `<div class="followup-list">${q.fu.map(f=>`<div class="followup-item">${f}</div>`).join('')}</div>` : ''}
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  if(xlinks.length){
+    html += `<div class="section-wrap" style="padding-bottom:16px">
+      <div class="section-hdr">Related Areas</div>
+      <div class="crosslink-list">`;
+    xlinks.forEach(xl => {
+      const other = AREAS[xl.other];
+      html += `<div class="crosslink-chip" onclick="selectAreaNode('${sys}','${xl.other}')">
+        <span class="cl-badge" style="background:${other.color}">${other.icon} ${other.label}</span>
+        <span class="cl-reason">${xl.reason}</span>
+        <span class="cl-arrow">›</span>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  document.getElementById('panel-empty').style.display = 'none';
+  const el = document.getElementById('panel-content');
+  el.style.display = 'flex';
+  el.style.flexDirection = 'column';
+  el.innerHTML = html;
+  renderCoverage(sys);
+}
+
+function toggleQ(key, sys, area){
+  appState.checked[key] = !appState.checked[key];
+  renderDetailPanel(sys, area === 'overview' ? null : area);
+}
+
+/* ═══════════════════════════════════════════════════
+   COVERAGE STRIP
+═══════════════════════════════════════════════════ */
+function renderCoverage(sys){
+  const sInfo = LS_SYSTEMS[sys];
+  const strip = document.getElementById('coverage-strip');
+  strip.style.display = 'flex';
+  strip.style.gap = '0';
+  strip.style.flexWrap = 'wrap';
+  strip.style.padding = '10px 18px';
+
+  const pct = (sys, area) => {
+    const areaKey = area || 'overview';
+    const qs = (QUESTION_BANK[area] || QUESTION_BANK.overview).questions;
+    const done = qs.filter((_,i) => appState.checked[qKey(sys,areaKey,i)]).length;
+    return qs.length ? Math.round(done/qs.length*100) : 0;
+  };
+
+  const allAreas = ['overview',...AREA_ORDER];
+  const bars = allAreas.map(area => {
+    const p = pct(sys, area === 'overview' ? null : area);
+    const label = area === 'overview' ? 'Overview' : AREAS[area].label.split(' ')[0];
+    return `<div class="cov-area-bar">
+      <div class="cov-area-label" title="${area}">${label}</div>
+      <div class="cov-area-track"><div class="cov-area-fill ${p===100?'full':''}" style="width:${p}%"></div></div>
+    </div>`;
+  }).join('');
+
+  const totalDone = allAreas.reduce((acc,area) => {
+    const aKey = area === 'overview' ? null : area;
+    const areaKey = area === 'overview' ? 'overview' : area;
+    const qs = (QUESTION_BANK[aKey] || QUESTION_BANK.overview).questions;
+    return acc + qs.filter((_,i) => appState.checked[qKey(sys,areaKey,i)]).length;
+  },0);
+  const totalQs = allAreas.reduce((acc,area) => {
+    const aKey = area === 'overview' ? null : area;
+    return acc + (QUESTION_BANK[aKey] || QUESTION_BANK.overview).questions.length;
+  },0);
+  const totalPct = totalQs ? Math.round(totalDone/totalQs*100) : 0;
+
+  strip.innerHTML = `<div class="cov-system" style="width:100%">
+    <div class="cov-sys-label">${sInfo.label} — Question Coverage
+      <span class="cov-sys-pct">${totalPct}% (${totalDone}/${totalQs})</span>
+    </div>
+    <div class="cov-areas">${bars}</div>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════ */
+initLandscape();
+</script>
+</body>
+</html>

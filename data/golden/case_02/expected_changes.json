@@ -1,0 +1,14 @@
+[
+  {
+    "change_type": "system_added",
+    "description": "SAP S/4HANA newly in scope effective January 2025",
+    "affected_categories": [
+      "IT Systems Understanding",
+      "ITGC - JML",
+      "ITGC - UAR",
+      "ITGC - ChangeMgmt",
+      "ITGC - PrivAccess",
+      "ITGC - Backup"
+    ]
+  }
+]

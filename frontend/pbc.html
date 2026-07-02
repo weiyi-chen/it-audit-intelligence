@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PBC Checklist Generator — IT Audit Intelligence</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6fb; color: #1a2035; min-height: 100vh;
+    }
+    .nav {
+      background: #1a2035; color: #fff; display: flex; align-items: center;
+      gap: 12px; padding: 14px 32px; font-size: 15px;
+    }
+    .nav .logo { font-weight: 700; font-size: 17px; color: #7eb8f7; text-decoration: none; }
+    .nav .sep  { color: #4a5568; margin: 0 4px; }
+    .nav .badge {
+      background: #2d3a55; border: 1px solid #3a4d70; border-radius: 4px;
+      padding: 2px 8px; font-size: 12px; color: #a0b4d0; margin-left: auto;
+    }
+    .page { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+    h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+    .subtitle { color: #5a6a80; font-size: 14px; margin-bottom: 36px; }
+
+    /* api status bar */
+    .api-status {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      margin-bottom: 24px; border: 1px solid;
+    }
+    .api-status.checking { background: #f0f4ff; border-color: #c7d7f0; color: #4a6090; }
+    .api-status.online   { background: #f0fdf4; border-color: #86efac; color: #166534; }
+    .api-status.offline  { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
+    .api-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-checking { background: #93c5fd; animation: blink 1s infinite; }
+    .dot-online   { background: #4ade80; }
+    .dot-offline  { background: #fb923c; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .card {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+      padding: 28px 32px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+    .card-title {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .6px; color: #4a86c8; margin-bottom: 20px;
+    }
+    .row { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+    .field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 180px; }
+    label { font-size: 13px; font-weight: 600; color: #3a4a5c; }
+    input[type="text"], textarea {
+      border: 1px solid #d0d9e8; border-radius: 8px; padding: 9px 12px;
+      font-size: 14px; color: #1a2035; background: #fafcff;
+      transition: border-color .15s, box-shadow .15s; width: 100%;
+    }
+    input[type="text"]:focus, textarea:focus {
+      outline: none; border-color: #4a86c8; box-shadow: 0 0 0 3px rgba(74,134,200,.15);
+    }
+    textarea { resize: vertical; min-height: 120px; font-family: inherit; }
+
+    .upload-zone {
+      border: 2px dashed #c0cfe0; border-radius: 10px; padding: 32px 24px;
+      text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.dragover { border-color: #4a86c8; background: #f0f6ff; }
+    .upload-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon { font-size: 36px; margin-bottom: 10px; }
+    .upload-label { font-size: 14px; font-weight: 600; color: #3a4a5c; }
+    .upload-hint  { font-size: 12px; color: #8a9ab0; margin-top: 4px; }
+    .upload-name  { font-size: 13px; font-weight: 600; color: #2e7d32; margin-top: 8px; }
+
+    .btn-run {
+      display: block; width: 100%; padding: 14px;
+      background: linear-gradient(135deg, #4a86c8 0%, #2d5fa0 100%);
+      color: #fff; font-size: 15px; font-weight: 700;
+      border: none; border-radius: 10px; cursor: pointer;
+      letter-spacing: .4px; transition: opacity .15s, transform .1s; margin-top: 8px;
+    }
+    .btn-run:hover:not(:disabled) { opacity: .9; }
+    .btn-run:active:not(:disabled) { transform: scale(.99); }
+    .btn-run:disabled { opacity: .55; cursor: not-allowed; }
+
+    /* pipeline progress */
+    #pipeline { display: none; }
+    .pipeline-steps {
+      display: flex; gap: 0; margin: 8px 0 28px; position: relative;
+    }
+    .pipeline-steps::before {
+      content: ""; position: absolute; top: 20px; left: 20px; right: 20px;
+      height: 3px; background: #e2e8f0; z-index: 0;
+    }
+    .pipeline-progress-bar {
+      position: absolute; top: 20px; left: 20px; height: 3px;
+      background: linear-gradient(90deg, #4a86c8, #2d5fa0);
+      z-index: 1; transition: width .5s ease; width: 0%;
+    }
+    .step {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 8px; position: relative; z-index: 2;
+    }
+    .step-dot {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: #e2e8f0; border: 3px solid #e2e8f0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 700; color: #8a9ab0; transition: all .3s;
+    }
+    .step.active .step-dot {
+      background: #ebf3ff; border-color: #4a86c8; color: #4a86c8;
+      box-shadow: 0 0 0 4px rgba(74,134,200,.2); animation: pulse 1.2s infinite;
+    }
+    .step.done .step-dot {
+      background: #4a86c8; border-color: #4a86c8; color: #fff; animation: none;
+    }
+    .step.error .step-dot { background: #fee2e2; border-color: #ef4444; color: #ef4444; }
+    @keyframes pulse {
+      0%,100%{box-shadow:0 0 0 4px rgba(74,134,200,.2)}
+      50%{box-shadow:0 0 0 7px rgba(74,134,200,.1)}
+    }
+    .step-label { font-size: 11px; font-weight: 600; color: #8a9ab0; text-align: center; }
+    .step.active .step-label { color: #4a86c8; }
+    .step.done   .step-label { color: #3a4a5c; }
+
+    .log-box {
+      background: #111827; border-radius: 8px; padding: 14px 16px;
+      font-family: "SF Mono", "Fira Code", monospace; font-size: 12.5px;
+      line-height: 1.7; color: #a0b4c8; min-height: 90px; max-height: 200px; overflow-y: auto;
+    }
+    .log-ok   { color: #4ade80; }
+    .log-info { color: #93c5fd; }
+    .log-warn { color: #fbbf24; }
+    .log-err  { color: #f87171; }
+
+    /* results */
+    #results { display: none; }
+    .stat-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;
+    }
+    @media(max-width:640px){ .stat-grid { grid-template-columns: repeat(2,1fr); } }
+    .stat {
+      background: #f8faff; border: 1px solid #e2e8f0; border-radius: 10px;
+      padding: 18px 16px; text-align: center;
+    }
+    .stat-val { font-size: 32px; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+    .stat-lbl { font-size: 12px; color: #7a8a9a; font-weight: 600; }
+    .stat.s-new     .stat-val { color: #2e7d32; }
+    .stat.s-updated .stat-val { color: #b45309; }
+    .stat.s-carried .stat-val { color: #374151; }
+    .stat.s-removed .stat-val { color: #b91c1c; }
+
+    .changes-list { margin: 0 0 24px; padding: 0; list-style: none; }
+    .changes-list li {
+      display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px;
+      background: #f8faff; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px;
+      font-size: 13.5px;
+    }
+    .tag {
+      display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; letter-spacing: .3px; white-space: nowrap; flex-shrink: 0;
+    }
+    .tag-add { background: #dcfce7; color: #166534; }
+    .tag-rem { background: #fee2e2; color: #991b1b; }
+    .tag-sz  { background: #fef9c3; color: #854d0e; }
+    .tag-per { background: #ede9fe; color: #5b21b6; }
+    .tag-reg { background: #dbeafe; color: #1e40af; }
+
+    .result-meta {
+      font-size: 12px; color: #8a9ab0; margin-bottom: 20px;
+      display: flex; gap: 18px; flex-wrap: wrap;
+    }
+    .result-meta span { display: flex; align-items: center; gap: 5px; }
+
+    .btn-download {
+      display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px;
+      background: #2e7d32; color: #fff; font-size: 14px; font-weight: 700;
+      border: none; border-radius: 8px; cursor: pointer; text-decoration: none;
+      transition: opacity .15s;
+    }
+    .btn-download:hover { opacity: .88; }
+    .btn-email {
+      display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px;
+      background: #1e40af; color: #fff; font-size: 14px; font-weight: 700;
+      border: none; border-radius: 8px; cursor: pointer; transition: opacity .15s;
+    }
+    .btn-email:hover { opacity: .88; }
+    .btn-reset {
+      display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px;
+      background: #f4f6fb; color: #3a4a5c; font-size: 14px; font-weight: 600;
+      border: 1px solid #d0d9e8; border-radius: 8px; cursor: pointer; transition: background .15s;
+    }
+    .btn-reset:hover { background: #e8edf8; }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+    /* email modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      z-index: 100; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 14px; padding: 28px 32px;
+      width: 480px; max-width: 95vw; box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    }
+    .modal h2 { font-size: 18px; margin-bottom: 18px; }
+    .modal .field { margin-bottom: 16px; }
+    .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+    .error-box {
+      background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px;
+      padding: 12px 16px; color: #991b1b; font-size: 13px; margin-top: 16px;
+    }
+
+    /* history panel */
+    #history-section { margin-top: 40px; }
+    .history-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .history-header h2 { font-size: 16px; font-weight: 700; color: #1a2035; }
+    .btn-sm {
+      padding: 6px 14px; font-size: 12px; font-weight: 600;
+      border-radius: 6px; border: 1px solid #d0d9e8;
+      background: #f4f6fb; color: #3a4a5c; cursor: pointer; transition: background .15s;
+    }
+    .btn-sm:hover { background: #e8edf8; }
+    .history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .history-table th {
+      text-align: left; padding: 8px 12px; font-weight: 700;
+      color: #4a86c8; font-size: 11px; text-transform: uppercase;
+      letter-spacing: .5px; border-bottom: 2px solid #e2e8f0;
+    }
+    .history-table td {
+      padding: 10px 12px; border-bottom: 1px solid #f0f4fa;
+      color: #2a3a4c; vertical-align: middle;
+    }
+    .history-table tr:hover td { background: #f8faff; }
+    .history-table .mono { font-family: "SF Mono", monospace; font-size: 12px; color: #5a6a80; }
+    .badge-mode-real { background:#dcfce7; color:#166534; border-radius:20px; padding:2px 8px; font-size:11px; font-weight:700; }
+    .badge-mode-mock { background:#fef9c3; color:#854d0e; border-radius:20px; padding:2px 8px; font-size:11px; font-weight:700; }
+    .history-empty { text-align: center; padding: 32px; color: #8a9ab0; font-size: 13px; }
+    .history-dl { background: none; border: none; cursor: pointer; font-size: 16px; padding: 2px 6px; }
+    .history-dl:hover { transform: scale(1.15); }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="logo" href="index.html">IT Audit Intelligence</a>
+  <span class="sep">›</span>
+  <span>Module A — PBC Checklist Generator</span>
+  <span class="badge" id="llm-badge">…</span>
+</nav>
+
+<div class="page">
+  <h1>PBC Checklist Generator</h1>
+  <p class="subtitle">
+    Upload last year's PBC list, paste the scope memo, and get a colour-coded Excel
+    in seconds — new systems, updated sample sizes, and removed items flagged automatically.
+  </p>
+
+  <!-- API status -->
+  <div class="api-status checking" id="api-status">
+    <div class="api-dot dot-checking" id="api-dot"></div>
+    <span id="api-status-text">Connecting to backend…</span>
+    <span style="margin-left:auto;font-size:11px;color:#8a9ab0" id="api-url-label"></span>
+  </div>
+
+  <!-- FORM -->
+  <div id="form-section">
+    <div class="card">
+      <div class="card-title">Engagement details</div>
+      <div class="row">
+        <div class="field">
+          <label for="client">Client name</label>
+          <input type="text" id="client" value="ACME Corp" />
+        </div>
+        <div class="field">
+          <label for="period">Audit period</label>
+          <input type="text" id="period" value="FY2025" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Step 1 — Prior-year PBC list (optional)</div>
+      <div class="upload-zone" id="dropzone">
+        <input type="file" id="xlsx-input" accept=".xlsx,.xls" />
+        <div class="upload-icon">📂</div>
+        <div class="upload-label">Drop prior-year PBC.xlsx here</div>
+        <div class="upload-hint">or click to browse · .xlsx only · max 10 MB</div>
+        <div class="upload-name" id="file-name"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Step 2 — Current-year scope memo</div>
+      <div class="field">
+        <label for="scope">Paste the scope memo (plain text)</label>
+        <textarea id="scope">FY2025 IT Audit Scope — ACME Corp
+
+1. SAP S/4HANA is newly in scope from 1 January 2025 following the ERP migration. All ITGC control areas apply (JML, UAR, Change Management, Privileged Access, Backup).
+
+2. Oracle EBS remains in scope through FY2025.
+
+3. Per the FY2025 audit plan, UAR sample sizes have been increased from 25 to 40 to align with the firm's updated sampling methodology.
+
+No other changes to scope.</textarea>
+      </div>
+    </div>
+
+    <button class="btn-run" id="btn-run" onclick="runPipeline()">
+      ▶&nbsp; Generate FY2025 PBC List
+    </button>
+    <div class="error-box" id="form-error" style="display:none"></div>
+  </div>
+
+  <!-- PIPELINE PROGRESS -->
+  <div id="pipeline" class="card" style="margin-top:24px;">
+    <div class="card-title">Pipeline progress</div>
+    <div class="pipeline-steps" id="steps-container">
+      <div class="pipeline-progress-bar" id="progress-bar"></div>
+      <div class="step" id="step-1"><div class="step-dot">1</div><div class="step-label">Ingest</div></div>
+      <div class="step" id="step-2"><div class="step-dot">2</div><div class="step-label">Scope Diff</div></div>
+      <div class="step" id="step-3"><div class="step-dot">3</div><div class="step-label">Update Items</div></div>
+      <div class="step" id="step-4"><div class="step-dot">4</div><div class="step-label">Review</div></div>
+      <div class="step" id="step-5"><div class="step-dot">✓</div><div class="step-label">Output</div></div>
+    </div>
+    <div class="log-box" id="log-box"></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results" class="card" style="margin-top:0;">
+    <div class="card-title">Results</div>
+
+    <div class="result-meta" id="result-meta"></div>
+
+    <div class="stat-grid">
+      <div class="stat s-new">    <div class="stat-val" id="r-new">—</div>    <div class="stat-lbl">🟢 New items</div></div>
+      <div class="stat s-updated"><div class="stat-val" id="r-updated">—</div><div class="stat-lbl">🟡 Updated</div></div>
+      <div class="stat s-carried"><div class="stat-val" id="r-carried">—</div><div class="stat-lbl">⬜ Carried over</div></div>
+      <div class="stat s-removed"><div class="stat-val" id="r-removed">—</div><div class="stat-lbl">🔴 Removed</div></div>
+    </div>
+
+    <div style="font-size:13px;font-weight:700;color:#3a4a5c;margin-bottom:10px;">Scope changes detected</div>
+    <ul class="changes-list" id="changes-list"></ul>
+
+    <div class="btn-row">
+      <button class="btn-download" id="btn-download" onclick="downloadXlsx()">⬇ Download PBC.xlsx</button>
+      <button class="btn-email" onclick="openEmailModal()">✉ Email to client</button>
+      <button class="btn-reset" onclick="resetForm()">↩ Start over</button>
+    </div>
+
+    <p style="font-size:12px;color:#8a9ab0;margin-top:12px;">
+      Open in Excel — rows are colour-coded: 🟢 green = new, 🟡 yellow = updated,
+      ⬜ white = carried over, 🔴 pink = removed. A Legend sheet is included.
+    </p>
+  </div>
+
+  <!-- HISTORY -->
+  <div id="history-section">
+    <div class="history-header">
+      <h2>🗂 Run History</h2>
+      <button class="btn-sm" onclick="loadHistory()">↻ Refresh</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div id="history-content">
+        <div class="history-empty">Loading history…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EMAIL MODAL -->
+<div class="modal-overlay" id="email-modal">
+  <div class="modal">
+    <h2>📧 Email PBC list to client</h2>
+    <div class="field">
+      <label for="email-to">Recipient email</label>
+      <input type="text" id="email-to" placeholder="client@example.com" />
+    </div>
+    <div class="field">
+      <label for="email-msg">Optional message</label>
+      <textarea id="email-msg" style="min-height:80px" placeholder="Leave blank for default message"></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-download" style="background:#1e40af" onclick="sendEmail()">Send</button>
+      <button class="btn-reset" onclick="closeEmailModal()">Cancel</button>
+    </div>
+    <div class="error-box" id="email-error" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+/* config.js is served by FastAPI and sets window.API_BASE to the Railway URL.
+   In local dev (opening this file directly), it's not reachable and we fall
+   back to localhost:8000. The dynamic load below is non-blocking. */
+(function() {
+  const s = document.createElement("script");
+  s.src = "/config.js";
+  s.onerror = function() {};  // silently ignore in local dev
+  document.head.appendChild(s);
+})();
+</script>
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const API_BASE = window.API_BASE || "http://localhost:8000";
+let xlsxB64 = null;       // base64 string from last successful generate
+let xlsxFilename = "";
+let uploadedFile = null;
+
+// ── API health check ─────────────────────────────────────────────────────────
+async function checkHealth() {
+  const statusEl  = document.getElementById("api-status");
+  const dotEl     = document.getElementById("api-dot");
+  const textEl    = document.getElementById("api-status-text");
+  const badgeEl   = document.getElementById("llm-badge");
+  const urlEl     = document.getElementById("api-url-label");
+  urlEl.textContent = API_BASE;
+  try {
+    const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(4000) });
+    if (!res.ok) throw new Error("non-200");
+    const data = await res.json();
+    statusEl.className = "api-status online";
+    dotEl.className    = "api-dot dot-online";
+    const mode = data.llm_mode === "real" ? "🟢 real LLM" : "🟡 mock LLM";
+    const cp   = data.checkpointer === "sqlite" ? "💾 SQLite checkpoint" : "🧠 memory checkpoint";
+    textEl.textContent = `Backend online · ${mode} · ${cp}`;
+    badgeEl.textContent = data.llm_mode === "real" ? "Real API" : "Mock mode";
+  } catch {
+    statusEl.className = "api-status offline";
+    dotEl.className    = "api-dot dot-offline";
+    textEl.textContent = "Backend offline — start with: uvicorn api.main:app --reload";
+    badgeEl.textContent = "Offline";
+  }
+}
+checkHealth();
+
+// ── File upload ───────────────────────────────────────────────────────────────
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("xlsx-input");
+fileInput.addEventListener("change", () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+dropzone.addEventListener("dragover",  e => { e.preventDefault(); dropzone.classList.add("dragover"); });
+dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+dropzone.addEventListener("drop", e => {
+  e.preventDefault(); dropzone.classList.remove("dragover");
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+function setFile(f) {
+  uploadedFile = f;
+  document.getElementById("file-name").textContent = "📄 " + f.name;
+}
+
+// ── Pipeline helpers ──────────────────────────────────────────────────────────
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+function log(type, msg) {
+  const box  = document.getElementById("log-box");
+  const line = document.createElement("div");
+  line.className = `log-${type}`;
+  line.textContent = msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function setStep(n, state) {  // state: "active" | "done" | "error"
+  const el = document.getElementById(`step-${n}`);
+  el.classList.remove("active", "done", "error");
+  el.classList.add(state);
+  if (state === "done") el.querySelector(".step-dot").textContent = "✓";
+  if (state === "error") el.querySelector(".step-dot").textContent = "✗";
+  const pct = (n / 5) * 100;
+  document.getElementById("progress-bar").style.width =
+    state === "done" ? pct + "%" : ((n - 1) / 5 * 100) + "%";
+}
+
+// ── Run pipeline (calls real API) ─────────────────────────────────────────────
+async function runPipeline() {
+  const btn   = document.getElementById("btn-run");
+  const errEl = document.getElementById("form-error");
+  errEl.style.display = "none";
+
+  const scopeText  = document.getElementById("scope").value.trim();
+  const clientName = document.getElementById("client").value.trim() || "Client";
+  const period     = document.getElementById("period").value.trim() || "FY2025";
+
+  if (!scopeText) { errEl.textContent = "Please paste a scope memo."; errEl.style.display = "block"; return; }
+
+  btn.disabled = true;
+  xlsxB64 = null;
+
+  // show pipeline card
+  const pipelineEl = document.getElementById("pipeline");
+  pipelineEl.style.display = "block";
+  document.getElementById("results").style.display = "none";
+  document.getElementById("log-box").innerHTML = "";
+  pipelineEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+  // animate steps 1-4 (the API call covers the actual work)
+  const stepLabels = ["Ingest", "Scope Diff", "Update Items", "Review", "Output"];
+  for (let s = 1; s <= 4; s++) {
+    setStep(s, "active");
+    log("info", `[${stepLabels[s-1].toLowerCase()}_node] starting…`);
+    await delay(420);
+    setStep(s, "done");
+    await delay(100);
+  }
+  setStep(5, "active");
+  log("info", "[output_node] calling API…");
+
+  try {
+    // Build FormData
+    const fd = new FormData();
+    fd.append("scope_text",   scopeText);
+    fd.append("client_name",  clientName);
+    fd.append("audit_period", period);
+    if (uploadedFile) fd.append("prior_xlsx", uploadedFile, uploadedFile.name);
+
+    const res = await fetch(`${API_BASE}/api/pbc/generate`, {
+      method: "POST",
+      body: fd,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+
+    // step 5 done
+    setStep(5, "done");
+    document.getElementById("progress-bar").style.width = "100%";
+    log("ok", `[output_node] ✅ wrote ${data.item_count} items in ${data.elapsed_seconds}s`);
+    Object.entries(data.status_breakdown).forEach(([s, n]) => log("ok", `   ${s}: ${n}`));
+
+    // store for download / email
+    xlsxB64      = data.xlsx_base64;
+    xlsxFilename = data.xlsx_filename;
+
+    await delay(300);
+    showResults(data);
+    loadHistory(); // refresh history panel with new run
+
+  } catch (err) {
+    setStep(5, "error");
+    log("err", `Error: ${err.message}`);
+    errEl.textContent = `Pipeline failed: ${err.message}`;
+    errEl.style.display = "block";
+    btn.disabled = false;
+  }
+}
+
+// ── Show results ──────────────────────────────────────────────────────────────
+function showResults(data) {
+  const breakdown = data.status_breakdown || {};
+  document.getElementById("r-new").textContent     = breakdown.new          ?? 0;
+  document.getElementById("r-updated").textContent = breakdown.updated      ?? 0;
+  document.getElementById("r-carried").textContent = breakdown.carried_over ?? 0;
+  document.getElementById("r-removed").textContent = breakdown.removed      ?? 0;
+
+  document.getElementById("result-meta").innerHTML = `
+    <span>📁 ${data.client_name} · ${data.audit_period}</span>
+    <span>📊 ${data.item_count} total items</span>
+    <span>⏱ ${data.elapsed_seconds}s</span>
+    <span>${data.llm_mode === "real" ? "🟢 Real LLM" : "🟡 Mock LLM"}</span>
+  `;
+
+  const list = document.getElementById("changes-list");
+  list.innerHTML = "";
+  if (!data.scope_changes?.length) {
+    list.innerHTML = '<li style="color:#5a6a80">No scope changes detected — all items carried forward.</li>';
+  } else {
+    const TAG = {
+      system_added:      ["tag-add", "system added"],
+      system_removed:    ["tag-rem", "system removed"],
+      sample_size_change:["tag-sz",  "sample size change"],
+      period_change:     ["tag-per", "period change"],
+      regulation_change: ["tag-reg", "regulation change"],
+    };
+    data.scope_changes.forEach(c => {
+      const [cls, lbl] = TAG[c.change_type] ?? ["tag-reg", c.change_type];
+      const li = document.createElement("li");
+      li.innerHTML = `<span class="tag ${cls}">${lbl}</span><span>${c.description}</span>`;
+      list.appendChild(li);
+    });
+  }
+
+  document.getElementById("results").style.display = "block";
+  document.getElementById("results").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+// ── Download xlsx ─────────────────────────────────────────────────────────────
+function downloadXlsx() {
+  if (!xlsxB64) return;
+  const bytes  = Uint8Array.from(atob(xlsxB64), c => c.charCodeAt(0));
+  const blob   = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const url    = URL.createObjectURL(blob);
+  const a      = document.createElement("a");
+  a.href = url; a.download = xlsxFilename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Email modal ───────────────────────────────────────────────────────────────
+function openEmailModal()  { document.getElementById("email-modal").classList.add("open"); }
+function closeEmailModal() {
+  document.getElementById("email-modal").classList.remove("open");
+  document.getElementById("email-error").style.display = "none";
+}
+
+async function sendEmail() {
+  const to  = document.getElementById("email-to").value.trim();
+  const msg = document.getElementById("email-msg").value.trim();
+  const err = document.getElementById("email-error");
+  err.style.display = "none";
+  if (!to) { err.textContent = "Please enter a recipient email."; err.style.display = "block"; return; }
+  if (!xlsxB64) { err.textContent = "No xlsx to attach — generate the PBC list first."; err.style.display = "block"; return; }
+  try {
+    const res = await fetch(`${API_BASE}/api/send-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to_email:    to,
+        client_name: document.getElementById("client").value,
+        audit_period:document.getElementById("period").value,
+        xlsx_base64: xlsxB64,
+        filename:    xlsxFilename,
+        message:     msg,
+      }),
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(e.detail);
+    }
+    closeEmailModal();
+    alert(`✅ Email sent to ${to}`);
+  } catch (e) {
+    err.textContent = `Send failed: ${e.message}`;
+    err.style.display = "block";
+  }
+}
+
+// ── History ───────────────────────────────────────────────────────────────────
+async function loadHistory() {
+  const container = document.getElementById("history-content");
+  try {
+    const res = await fetch(`${API_BASE}/api/pbc/history?limit=20`, {
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    if (!data.runs || data.runs.length === 0) {
+      container.innerHTML = '<div class="history-empty">No runs yet — generate your first PBC list above.</div>';
+      return;
+    }
+
+    const rows = data.runs.map(r => {
+      const date = r.created_at
+        ? new Date(r.created_at + "Z").toLocaleString()
+        : "—";
+      const modeHtml = r.llm_mode === "real"
+        ? '<span class="badge-mode-real">Real</span>'
+        : '<span class="badge-mode-mock">Mock</span>';
+      const breakdown = r.status_breakdown || {};
+      const summary = [
+        breakdown.new        ? `🟢 ${breakdown.new}` : "",
+        breakdown.updated    ? `🟡 ${breakdown.updated}` : "",
+        breakdown.carried_over ? `⬜ ${breakdown.carried_over}` : "",
+        breakdown.removed    ? `🔴 ${breakdown.removed}` : "",
+      ].filter(Boolean).join("  ");
+
+      return `<tr>
+        <td class="mono">${r.id}</td>
+        <td><strong>${escHtml(r.client_name)}</strong></td>
+        <td>${escHtml(r.audit_period)}</td>
+        <td>${r.item_count ?? "—"}</td>
+        <td style="font-size:12px">${summary || "—"}</td>
+        <td>${modeHtml}</td>
+        <td class="mono">${date}</td>
+        <td>
+          <button class="history-dl" title="Re-download xlsx" onclick="redownload(${r.id}, '${escHtml(r.xlsx_filename || "pbc.xlsx")}')">⬇</button>
+        </td>
+      </tr>`;
+    }).join("");
+
+    container.innerHTML = `<table class="history-table">
+      <thead>
+        <tr>
+          <th>#</th><th>Client</th><th>Period</th><th>Items</th>
+          <th>Breakdown</th><th>Mode</th><th>Date</th><th></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  } catch (e) {
+    container.innerHTML = `<div class="history-empty" style="color:#b91c1c">Could not load history: ${e.message}</div>`;
+  }
+}
+
+async function redownload(runId, filename) {
+  try {
+    const res = await fetch(`${API_BASE}/api/pbc/runs/${runId}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!data.xlsx_base64) throw new Error("No xlsx in response");
+    const bytes = Uint8Array.from(atob(data.xlsx_base64), c => c.charCodeAt(0));
+    const blob  = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert(`Download failed: ${e.message}`);
+  }
+}
+
+function escHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+}
+
+// Load history on page startup
+loadHistory();
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+function resetForm() {
+  document.getElementById("pipeline").style.display = "none";
+  document.getElementById("results").style.display  = "none";
+  document.getElementById("btn-run").disabled = false;
+  document.getElementById("file-name").textContent = "";
+  document.getElementById("form-error").style.display = "none";
+  uploadedFile = null; xlsxB64 = null;
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById(`step-${i}`);
+    el.classList.remove("active","done","error");
+    el.querySelector(".step-dot").textContent = i === 5 ? "✓" : i;
+  }
+  document.getElementById("progress-bar").style.width = "0%";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+</script>
+</body>
+</html>

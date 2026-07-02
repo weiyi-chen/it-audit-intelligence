@@ -1,0 +1,29 @@
+[
+  {
+    "change_type": "system_added",
+    "description": "SAP S/4HANA newly in scope",
+    "affected_categories": [
+      "IT Systems Understanding",
+      "ITGC - JML",
+      "ITGC - UAR",
+      "ITGC - ChangeMgmt",
+      "ITGC - PrivAccess",
+      "ITGC - Backup"
+    ]
+  },
+  {
+    "change_type": "system_removed",
+    "description": "HR-Legacy decommissioned",
+    "affected_categories": [
+      "IT Systems Understanding",
+      "ITGC - JML"
+    ]
+  },
+  {
+    "change_type": "sample_size_change",
+    "description": "UAR sample size raised to 40",
+    "affected_categories": [
+      "ITGC - UAR"
+    ]
+  }
+]

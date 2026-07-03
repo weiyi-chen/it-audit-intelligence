@@ -2,6 +2,16 @@
 
 AI-assisted IT audit workflow platform for annual ITGC planning, PBC generation, IT understanding mapping, and walkthrough coverage tracking.
 
+## Live Website
+
+**Project website:** https://weiyi-chen.github.io/it-audit-intelligence/
+
+Direct demos:
+
+- PBC Checklist Generator: https://weiyi-chen.github.io/it-audit-intelligence/pbc.html
+- IT Understanding Map: https://weiyi-chen.github.io/it-audit-intelligence/it_understanding.html
+- Walkthrough Tracker: https://weiyi-chen.github.io/it-audit-intelligence/audit_tracker.html
+
 ## Modules
 
 - **Module A — PBC Checklist Generator**
@@ -49,4 +59,3 @@ python demo_run.py
 ```
 
 This runs Module A in mock mode if `ANTHROPIC_API_KEY` is not configured.
-

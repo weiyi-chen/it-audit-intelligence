@@ -5,8 +5,9 @@ Node contracts
 ──────────────
 ingest_node       : reads prior year xlsx → state["prior_year_items"]
 scope_diff_node   : Claude extracts List[ScopeChange] from scope text
+retrieve_guidance : retrieves effective approved methodology requirements
 update_items_node : Claude decides keep/update/remove per prior item;
-                    new items generated from templates for system_added changes
+                    new items generated from templates and retrieved guidance
 review_node       : auto-approve placeholder (Phase 4 wires to FastAPI interrupt)
 output_node       : writes current_year_items → xlsx; sets pbc_output_xlsx_path
 
@@ -32,6 +33,7 @@ from typing import Any, List
 
 from core.llm import call_claude
 from core.state import PBCItem, ScopeChange, State
+from modules.pbc.regulatory_rag import RetrievalQuery, retrieve_guidance
 from modules.pbc.templates import CATEGORIES, instantiate_items
 from modules.pbc.xlsx_io import read_pbc_xlsx, write_pbc_xlsx
 
@@ -104,6 +106,9 @@ Client: {client_name}
 
 Detected scope changes:
 {scope_changes_json}
+
+Retrieved approved methodology and regulatory guidance:
+{regulatory_guidance_json}
 
 Prior year PBC items (batch):
 {items_json}
@@ -266,7 +271,54 @@ def scope_diff_node(state: State) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Node 3 — update_items_node
+# Node 3 — retrieve_regulatory_guidance_node
+# ─────────────────────────────────────────────────────────────────────────────
+
+def retrieve_regulatory_guidance_node(state: State) -> dict:
+    """Retrieve approved guidance applicable to this preliminary audit scope.
+
+    The scope memo is short and remains direct LLM context. RAG is used only for
+    the larger, versioned methodology corpus where effective dates, metadata,
+    ranking, and source citations matter.
+    """
+    scope_changes = state.get("scope_changes", [])
+    control_areas = sorted({
+        category
+        for change in scope_changes
+        for category in change.get("affected_categories", [])
+    })
+    prior_context = " ".join(
+        f"{item.get('category', '')} {item.get('description', '')}"
+        for item in state.get("prior_year_items", [])[:30]
+    )
+    query_text = " ".join([
+        "current effective audit methodology regulatory requirements",
+        state.get("current_year_scope_text", ""),
+        prior_context,
+        " ".join(control_areas),
+    ])
+    try:
+        guidance = retrieve_guidance(
+            RetrievalQuery(
+                text=query_text,
+                audit_period=state.get("audit_period", ""),
+                jurisdiction=str(state.get("jurisdiction", "*")),
+                industry=str(state.get("industry", "*")),
+                control_areas=tuple(control_areas),
+            )
+        )
+        print(
+            "[retrieve_regulatory_guidance_node] retrieved "
+            f"{len(guidance)} approved requirement(s)"
+        )
+        return {"regulatory_guidance": guidance}
+    except Exception as exc:
+        print(f"[retrieve_regulatory_guidance_node] error: {exc}")
+        return {"regulatory_guidance": [], "error": str(exc)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Node 4 — update_items_node
 # ─────────────────────────────────────────────────────────────────────────────
 
 _BATCH_SIZE = 20  # items per Claude call
@@ -289,6 +341,7 @@ def update_items_node(state: State) -> dict:
 
     prior_items  : List[PBCItem]   = state.get("prior_year_items",  [])
     scope_changes: List[ScopeChange] = state.get("scope_changes",   [])
+    regulatory_guidance = state.get("regulatory_guidance", [])
     audit_period : str             = state.get("audit_period",       "")
     client_name  : str             = state.get("client_name",        "")
 
@@ -312,6 +365,17 @@ def update_items_node(state: State) -> dict:
                 audit_period      = audit_period,
                 client_name       = client_name,
                 scope_changes_json= json.dumps(scope_changes, indent=2),
+                regulatory_guidance_json=json.dumps(
+                    [
+                        {
+                            "requirement_id": requirement.get("requirement_id"),
+                            "content": requirement.get("content"),
+                            "citation": requirement.get("citation"),
+                        }
+                        for requirement in regulatory_guidance
+                    ],
+                    indent=2,
+                ),
                 items_json        = json.dumps(batch, indent=2),
             )
 
@@ -364,6 +428,24 @@ def update_items_node(state: State) -> dict:
                 )
                 current_items.append(updated)
 
+    # Apply explicit sample-size deltas deterministically. The LLM may explain
+    # relevance, but a numeric methodology update should not depend on prose.
+    for change in scope_changes:
+        if change.get("change_type") != "sample_size_change":
+            continue
+        numbers = re.findall(r"\b\d+\b", change.get("description", ""))
+        if not numbers:
+            continue
+        new_size = numbers[-1]
+        affected_categories = set(change.get("affected_categories", []))
+        for item in current_items:
+            if item["category"] in affected_categories and item.get("sample_size"):
+                item["sample_size"] = new_size
+                item["status"] = "updated"
+                item["notes"] = (
+                    f"{item.get('notes', '')} | Sample size updated from scope memo"
+                ).strip(" |")
+
     # ── Step 2: new items from system_added scope changes ──────────────────
     added_systems: list[str] = []
     for change in scope_changes:
@@ -408,12 +490,40 @@ def update_items_node(state: State) -> dict:
                 seq_counters[cat] = seq_start + len(new_items)
                 print(f"[update_items_node]   {cat}: +{len(new_items)} new items")
 
+    # Add approved mandatory discovery questions from retrieved guidance.
+    existing_descriptions = {
+        re.sub(r"\s+", " ", item["description"]).strip().lower()
+        for item in current_items
+    }
+    for requirement in regulatory_guidance:
+        if not requirement.get("mandatory_discovery"):
+            continue
+        citation = requirement.get("citation", requirement.get("requirement_id", ""))
+        for question in requirement.get("proposed_questions", []):
+            normalized = re.sub(r"\s+", " ", question).strip().lower()
+            if not normalized or normalized in existing_descriptions:
+                continue
+            item_id = _next_id(used_ids, "REG")
+            used_ids.add(item_id)
+            current_items.append(PBCItem(
+                item_id=item_id,
+                category=(requirement.get("control_areas") or ["IT Systems Understanding"])[0],
+                description=question,
+                in_scope=True,
+                period=audit_period,
+                sample_size=None,
+                status="new",
+                last_year_id=None,
+                notes=f"Added from approved guidance: {citation}",
+            ))
+            existing_descriptions.add(normalized)
+
     print(f"[update_items_node] total current_year_items: {len(current_items)}")
     return {"current_year_items": current_items}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Node 4 — review_node
+# Node 5 — review_node
 # ─────────────────────────────────────────────────────────────────────────────
 
 def review_node(state: State) -> dict:

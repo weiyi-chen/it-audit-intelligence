@@ -30,6 +30,14 @@ class ScopeChangeSummary(BaseModel):
     affected_categories: List[str]
 
 
+class RegulatorySourceSummary(BaseModel):
+    requirement_id: str
+    title: str
+    version: str
+    citation: str
+    retrieval_score: float
+
+
 class PBCItemSummary(BaseModel):
     item_id: str
     category: str
@@ -49,6 +57,7 @@ class PBCGenerateResponse(BaseModel):
     client_name: str
     audit_period: str
     scope_changes: List[ScopeChangeSummary]
+    regulatory_sources: List[RegulatorySourceSummary] = Field(default_factory=list)
     item_count: int
     status_breakdown: dict  # {"new": 5, "updated": 2, ...}
     xlsx_base64: str         # base64-encoded .xlsx bytes

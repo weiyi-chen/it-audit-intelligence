@@ -17,8 +17,11 @@ Direct demos:
 - **Module A — PBC Checklist Generator**
   - Reads prior-year PBC Excel files.
   - Uses Claude or deterministic mock mode to detect current-year scope changes.
+  - Retrieves effective approved audit guidance using metadata filters and BM25-style ranking.
+  - Adds requirement-level citations and deterministic methodology updates to generated requests.
   - Generates a colour-coded current-year PBC workbook with `carried_over`, `updated`, `new`, and `removed` rows.
-  - Exposed through CLI, FastAPI, and frontend demo.
+  - Supports synchronous generation and a checkpointed LangGraph human-review API.
+  - Exposed through CLI, FastAPI, and the frontend demo.
 
 - **Module B — IT Understanding Map**
   - Maps in-scope financial systems, business processes, stakeholders, vendors, data flows, and ITGC areas.
@@ -32,10 +35,46 @@ Direct demos:
 
 - Python, FastAPI, LangGraph
 - Anthropic Claude API with mock fallback
+- BM25-based regulatory RAG with effective-date and metadata filtering
 - SQLite audit history
 - openpyxl for Excel read/write
 - D3.js / static HTML frontend prototypes
 - Railway-ready deployment config
+
+## Module A Workflow
+
+```text
+Prior-year PBC workbook
+        -> scope-change extraction
+        -> approved-guidance retrieval
+        -> checklist update and deterministic rules
+        -> reviewer validation
+        -> cited Excel output
+```
+
+The approved-guidance corpus is versioned in
+`modules/pbc/regulatory_guidance.json`. Retrieval filters guidance by audit
+period, jurisdiction, industry, and control area before applying BM25-style
+ranking. The API and frontend expose the retrieved requirement ID, version,
+citation, and retrieval score. Generated methodology-driven PBC items also
+carry their source citation in the workbook notes.
+
+This is currently a lexical RAG baseline. It does **not** claim dense
+embeddings, a vector database, hybrid search, or automated ingestion of live
+regulatory websites. Those are planned scale-out options once the corpus and
+labelled retrieval evaluation set are large enough to demonstrate a measurable
+benefit over BM25.
+
+## Testing
+
+```bash
+pytest tests -q
+```
+
+The suite covers scope parsing, checklist decisions, template generation,
+batch fallback behaviour, Excel round trips, graph behaviour, effective-date
+filtering, guidance retrieval, citation propagation, and deterministic sample
+size updates. The current suite has 155 passing tests.
 
 ## Quick Start
 

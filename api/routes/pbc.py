@@ -52,10 +52,15 @@ from modules.pbc.nodes import (
     ingest_node,
     output_node,
     review_node,
+    retrieve_regulatory_guidance_node,
     scope_diff_node,
     update_items_node,
 )
-from api.schemas import PBCGenerateResponse, ScopeChangeSummary
+from api.schemas import (
+    PBCGenerateResponse,
+    RegulatorySourceSummary,
+    ScopeChangeSummary,
+)
 from api.database import db
 
 router = APIRouter()
@@ -66,6 +71,8 @@ async def generate_pbc(
     scope_text:   str        = Form(...,  description="Current-year scope memo text"),
     client_name:  str        = Form("Client",  description="Client name"),
     audit_period: str        = Form("FY2025",  description="Audit period, e.g. FY2025"),
+    jurisdiction: str        = Form("*", description="Jurisdiction code or *"),
+    industry: str            = Form("*", description="Industry or *"),
     prior_xlsx:   Optional[UploadFile] = File(None, description="Prior-year PBC xlsx (optional)"),
 ) -> PBCGenerateResponse:
     """
@@ -103,6 +110,8 @@ async def generate_pbc(
         state["prior_year_pbc_path"]     = prior_path
         state["current_year_scope_text"] = scope_text
         state["pbc_output_xlsx_path"]    = tmp_out
+        state["jurisdiction"]             = jurisdiction
+        state["industry"]                 = industry
 
         # ── run five nodes in sequence ────────────────────────────────────────
         # (Same as demo_run.py — bypasses StateGraph so no langgraph needed.)
@@ -111,6 +120,7 @@ async def generate_pbc(
         #   final = app.invoke(state, config={"configurable": {"thread_id": ...}})
         state = {**state, **ingest_node(state)}
         state = {**state, **scope_diff_node(state)}
+        state = {**state, **retrieve_regulatory_guidance_node(state)}
         state = {**state, **update_items_node(state)}
         state = {**state, **review_node(state)}
         state = {**state, **output_node(state)}
@@ -161,6 +171,16 @@ async def generate_pbc(
                     affected_categories = c.get("affected_categories", []),
                 )
                 for c in changes
+            ],
+            regulatory_sources = [
+                RegulatorySourceSummary(
+                    requirement_id=str(g.get("requirement_id", "")),
+                    title=str(g.get("title", "")),
+                    version=str(g.get("version", "")),
+                    citation=str(g.get("citation", "")),
+                    retrieval_score=float(g.get("retrieval_score", 0.0)),
+                )
+                for g in state.get("regulatory_guidance", [])
             ],
             item_count       = len(items),
             status_breakdown = by_status,

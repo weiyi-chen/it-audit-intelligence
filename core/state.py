@@ -46,6 +46,22 @@ class ScopeChange(TypedDict):
     affected_categories: List[str]   # which PBC categories this change touches
 
 
+class RegulatoryGuidance(TypedDict, total=False):
+    """One approved methodology or regulatory passage retrieved for Module A."""
+    requirement_id: str
+    title: str
+    source: str
+    version: str
+    effective_from: str
+    effective_to: Optional[str]
+    control_areas: List[str]
+    content: str
+    proposed_questions: List[str]
+    mandatory_discovery: bool
+    retrieval_score: float
+    citation: str
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # Module B — IT Understanding Map
 # ─────────────────────────────────────────────────────────────────────────
@@ -94,12 +110,15 @@ class State(TypedDict):
     # ── shared input ──────────────────────────────────────────
     client_name: str
     audit_period: str
+    jurisdiction: str
+    industry: str
 
     # ── Module A — PBC ────────────────────────────────────────
     prior_year_pbc_path: str
     current_year_scope_text: str
     prior_year_items: List[PBCItem]
     scope_changes: List[ScopeChange]
+    regulatory_guidance: List[RegulatoryGuidance]
     current_year_items: List[PBCItem]
     pbc_output_xlsx_path: str
     pbc_output_xlsx_b64: str
@@ -146,11 +165,14 @@ def default_state(
     return State(
         client_name=client_name,
         audit_period=audit_period,
+        jurisdiction="*",
+        industry="*",
         # Module A
         prior_year_pbc_path="",
         current_year_scope_text="",
         prior_year_items=[],
         scope_changes=[],
+        regulatory_guidance=[],
         current_year_items=[],
         pbc_output_xlsx_path="",
         pbc_output_xlsx_b64="",

@@ -1,0 +1,51 @@
+[
+  {
+    "requirement_id": "FIRM-ITAM-2025-UAR-01",
+    "title": "FY2025 user access review sampling methodology",
+    "source": "Approved Firm IT Audit Methodology",
+    "version": "2025.1",
+    "effective_from": "2025-01-01",
+    "effective_to": null,
+    "jurisdictions": ["*"],
+    "industries": ["*"],
+    "control_areas": ["ITGC - UAR"],
+    "topics": ["user access review", "UAR", "sample size", "sampling methodology"],
+    "content": "For FY2025 engagements, the standard user access review sample size is 40 when the audit plan does not document an approved alternative.",
+    "mandatory_discovery": false,
+    "proposed_questions": []
+  },
+  {
+    "requirement_id": "FIRM-ITAM-2025-AI-01",
+    "title": "AI use in financial reporting discovery",
+    "source": "Approved Firm IT Audit Methodology",
+    "version": "2025.1",
+    "effective_from": "2025-01-01",
+    "effective_to": null,
+    "jurisdictions": ["*"],
+    "industries": ["*"],
+    "control_areas": ["IT Systems Understanding"],
+    "topics": ["artificial intelligence", "AI", "financial reporting", "audit evidence", "automated controls"],
+    "content": "Auditors must determine whether AI-enabled systems or tools are used in financial reporting, transaction processing, control execution, audit evidence preparation, or management decision-making.",
+    "mandatory_discovery": true,
+    "proposed_questions": [
+      "Provide an inventory of AI-enabled systems, models, or tools used in financial reporting, transaction processing, control execution, audit evidence preparation, or management decision-making. For each item, include its purpose, owner, implementation date, hosting arrangement, vendor, and affected financial process."
+    ]
+  },
+  {
+    "requirement_id": "FIRM-ITAM-2025-ERP-01",
+    "title": "New ERP implementation planning considerations",
+    "source": "Approved Firm IT Audit Methodology",
+    "version": "2025.1",
+    "effective_from": "2025-01-01",
+    "effective_to": null,
+    "jurisdictions": ["*"],
+    "industries": ["*"],
+    "control_areas": ["IT Systems Understanding", "ITGC - ChangeMgmt"],
+    "topics": ["ERP migration", "new system", "implementation", "SAP", "Oracle"],
+    "content": "For a newly implemented ERP, obtain implementation governance, data migration reconciliation, cutover approval, post-implementation review, and the current system architecture.",
+    "mandatory_discovery": false,
+    "proposed_questions": [
+      "For each newly implemented ERP, provide implementation governance, data migration reconciliation, cutover approval, post-implementation review, and the current system architecture."
+    ]
+  }
+]

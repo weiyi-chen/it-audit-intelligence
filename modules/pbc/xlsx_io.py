@@ -180,7 +180,7 @@ def read_pbc_xlsx(path: str) -> List[PBCItem]:
         item = PBCItem(
             item_id     = _get_str(row, col_map, "item_id",      default=""),
             category    = _get_str(row, col_map, "category",     default=""),
-            description = _get_str(row, col_map, "description",  default=""),
+            description = _get_text(row, col_map, "description", default=""),
             in_scope    = _get_bool(row, col_map, "in_scope",    default=True),
             period      = _get_str(row, col_map, "period",       default=""),
             sample_size = _get_optional_str(row, col_map, "sample_size"),
@@ -306,6 +306,15 @@ def _get_str(row: tuple, col_map: dict, key: str, default: str = "") -> str:
     if idx is None or idx >= len(row) or row[idx] is None:
         return default
     return str(row[idx]).strip()
+
+
+def _get_text(row: tuple, col_map: dict, key: str, default: str = "") -> str:
+    """Read free-form text without changing meaningful whitespace."""
+    normalised = _normalise_col_name(key)
+    idx = col_map.get(normalised)
+    if idx is None or idx >= len(row) or row[idx] is None:
+        return default
+    return str(row[idx])
 
 
 def _get_optional_str(row: tuple, col_map: dict, key: str) -> Optional[str]:

@@ -47,6 +47,7 @@ from core.state import State
 from modules.pbc.nodes import (
     ingest_node,
     scope_diff_node,
+    retrieve_regulatory_guidance_node,
     update_items_node,
     review_node,
     output_node,
@@ -58,7 +59,11 @@ from modules.pbc.nodes import (
 def scope_diff_router(state: State) -> str:
     """If no scope changes detected, skip the update step entirely —
     the prior year list carries forward as-is."""
-    return "update_items_node" if state.get("scope_changes") else "output_node"
+    return (
+        "update_items_node"
+        if state.get("scope_changes") or state.get("regulatory_guidance")
+        else "output_node"
+    )
 
 
 def review_router(state: State) -> str:
@@ -80,6 +85,10 @@ def build_pbc_graph() -> StateGraph:
     # nodes
     g.add_node("ingest_node",       ingest_node)
     g.add_node("scope_diff_node",   scope_diff_node)
+    g.add_node(
+        "retrieve_regulatory_guidance_node",
+        retrieve_regulatory_guidance_node,
+    )
     g.add_node("update_items_node", update_items_node)
     g.add_node("review_node",       review_node)
     g.add_node("output_node",       output_node)
@@ -89,12 +98,13 @@ def build_pbc_graph() -> StateGraph:
 
     # linear edges
     g.add_edge("ingest_node",       "scope_diff_node")
+    g.add_edge("scope_diff_node", "retrieve_regulatory_guidance_node")
     g.add_edge("update_items_node", "review_node")
     g.add_edge("output_node",       END)
 
     # conditional edges
     g.add_conditional_edges(
-        "scope_diff_node",
+        "retrieve_regulatory_guidance_node",
         scope_diff_router,
         {
             "update_items_node": "update_items_node",

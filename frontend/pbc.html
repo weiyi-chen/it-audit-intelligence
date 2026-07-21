@@ -347,6 +347,9 @@ No other changes to scope.</textarea>
     <div style="font-size:13px;font-weight:700;color:#3a4a5c;margin-bottom:10px;">Scope changes detected</div>
     <ul class="changes-list" id="changes-list"></ul>
 
+    <div style="font-size:13px;font-weight:700;color:#3a4a5c;margin-bottom:10px;">Approved guidance retrieved</div>
+    <ul class="changes-list" id="regulatory-sources-list"></ul>
+
     <div class="btn-row">
       <button class="btn-download" id="btn-download" onclick="downloadXlsx()">⬇ Download PBC.xlsx</button>
       <button class="btn-email" onclick="openEmailModal()">✉ Email to client</button>
@@ -499,7 +502,7 @@ async function runPipeline() {
   pipelineEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
   // animate steps 1-4 (the API call covers the actual work)
-  const stepLabels = ["Ingest", "Scope Diff", "Update Items", "Review", "Output"];
+  const stepLabels = ["Ingest", "Scope + Guidance", "Update Items", "Review", "Output"];
   for (let s = 1; s <= 4; s++) {
     setStep(s, "active");
     log("info", `[${stepLabels[s-1].toLowerCase()}_node] starting…`);
@@ -535,6 +538,9 @@ async function runPipeline() {
     document.getElementById("progress-bar").style.width = "100%";
     log("ok", `[output_node] ✅ wrote ${data.item_count} items in ${data.elapsed_seconds}s`);
     Object.entries(data.status_breakdown).forEach(([s, n]) => log("ok", `   ${s}: ${n}`));
+    (data.regulatory_sources || []).forEach(source =>
+      log("ok", `   retrieved: ${source.requirement_id} (${source.version})`)
+    );
 
     // store for download / email
     xlsxB64      = data.xlsx_base64;
@@ -585,6 +591,27 @@ function showResults(data) {
       const li = document.createElement("li");
       li.innerHTML = `<span class="tag ${cls}">${lbl}</span><span>${c.description}</span>`;
       list.appendChild(li);
+    });
+  }
+
+  const sourceList = document.getElementById("regulatory-sources-list");
+  sourceList.innerHTML = "";
+  if (!data.regulatory_sources?.length) {
+    const li = document.createElement("li");
+    li.style.color = "#5a6a80";
+    li.textContent = "No applicable approved guidance retrieved.";
+    sourceList.appendChild(li);
+  } else {
+    data.regulatory_sources.forEach(source => {
+      const li = document.createElement("li");
+      const tag = document.createElement("span");
+      tag.className = "tag tag-reg";
+      tag.textContent = source.requirement_id;
+      const text = document.createElement("span");
+      text.textContent =
+        `${source.title} · ${source.version} · score ${source.retrieval_score}`;
+      li.append(tag, text);
+      sourceList.appendChild(li);
     });
   }
 

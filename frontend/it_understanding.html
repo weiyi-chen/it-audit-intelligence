@@ -42,6 +42,7 @@
     .risk-card{padding:10px 12px;margin-bottom:7px;border-radius:8px;background:#141d2e;border:1px solid #1e2d45;font-size:12px;color:#a0b8cc;line-height:1.45}
     .risk-card.high{border-left:3px solid #ef4444}.risk-card.medium{border-left:3px solid #f59e0b}.risk-card.low{border-left:3px solid #22c55e}
     .prp-chip{display:inline-flex;padding:3px 8px;margin:0 5px 5px 0;border-radius:12px;background:#30143f;border:1px solid #6b287d;color:#e9b8f4;font-size:10.5px;font-weight:700}
+    .prp-chip.custom{gap:6px;background:#25204a;border-color:#6366f1;color:#c7d2fe}.prp-remove{border:0;background:transparent;color:#818cf8;cursor:pointer;font-size:12px;padding:0}.prp-add-row{display:flex;gap:7px;margin-top:7px}.prp-input{flex:1;min-width:0;background:#0f1623;color:#c8d8e8;border:1px solid #3a315b;border-radius:7px;padding:7px 9px;font-size:11px}.prp-add-btn{background:#4c1d95;color:#ede9fe;border:1px solid #6d28d9;border-radius:7px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer}
     .impact-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;margin:0 5px 5px 0;border-radius:6px;background:#17243a;border:1px solid #294364;color:#8db9e8;font-size:11px;cursor:pointer}
     .agent-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding-bottom:18px}
     .agent-btn{display:flex;align-items:center;gap:8px;padding:9px;border:1px solid #2a3d55;background:#17243a;border-radius:8px;color:#b7cbe0;text-decoration:none;font-size:11px;font-weight:700;cursor:pointer}
@@ -457,6 +458,15 @@ function loadAgentAssignments(){
 let agentAssignments = loadAgentAssignments();
 function agentsFor(nodeId){ return agentAssignments[nodeId] || []; }
 function saveAgentAssignments(){ try { localStorage.setItem('itai-agent-slots',JSON.stringify(agentAssignments)); } catch {} }
+
+function loadCustomPrps(){
+  try { return JSON.parse(localStorage.getItem('itai-custom-prps')||'{}'); }
+  catch { return {}; }
+}
+let customPrps = loadCustomPrps();
+function saveCustomPrps(){ try { localStorage.setItem('itai-custom-prps',JSON.stringify(customPrps)); } catch {} }
+function escapeRiskText(value){ return String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function prpsFor(node){ return [...(node.prps||[]),...(customPrps[node.id]||[])]; }
 
 /* ═══════════════════════════════════════════════════
    DETAIL DATA (per in-scope system × 7 IT areas)
@@ -880,6 +890,23 @@ function selectRiskNode(node){
   renderRiskPanel(node);
 }
 
+function renderPrpEditor(node){
+  const builtIn=node.prps||[];
+  const custom=customPrps[node.id]||[];
+  return `${builtIn.map(p=>`<span class="prp-chip">${escapeRiskText(p)}</span>`).join('')}${custom.map((p,i)=>`<span class="prp-chip custom">${escapeRiskText(p)}<button class="prp-remove" title="Remove custom PRP" onclick="removePrpFromNode('${node.id}',${i})">×</button></span>`).join('')}<div class="prp-add-row"><input class="prp-input" id="prp-input-${node.id}" maxlength="120" placeholder="Add a process risk point…" onkeydown="if(event.key==='Enter')addPrpToNode('${node.id}')"><button class="prp-add-btn" onclick="addPrpToNode('${node.id}')">＋ Add PRP</button></div>`;
+}
+
+function addPrpToNode(nodeId){
+  const input=document.getElementById(`prp-input-${nodeId}`); const value=input?.value.trim(); if(!value) return;
+  customPrps[nodeId]=[...new Set([...(customPrps[nodeId]||[]),value.slice(0,120)])]; saveCustomPrps();
+  const node=PROCESS_STEPS.find(x=>x.id===nodeId)||SUPPORT_NODES.find(x=>x.id===nodeId); selectRiskNode(node);
+}
+
+function removePrpFromNode(nodeId,index){
+  customPrps[nodeId]=(customPrps[nodeId]||[]).filter((_,i)=>i!==index); saveCustomPrps();
+  const node=PROCESS_STEPS.find(x=>x.id===nodeId)||SUPPORT_NODES.find(x=>x.id===nodeId); selectRiskNode(node);
+}
+
 function renderAgentWorkspace(node){
   const assigned=agentsFor(node.id);
   const available=Object.entries(AGENT_CATALOG).filter(([id])=>!assigned.includes(id));
@@ -900,11 +927,12 @@ function runContextAgent(agentId,nodeId){
   const risks=node.risks||[node.id==='identity'?'Central identity control failure affects all relying applications.':'Weak change governance affects connected applications.'];
   const controls=node.controls||[node.id==='identity'?'JML, MFA, privileged access and UAR controls':'Change approval, testing and segregation controls'];
   const evidence=node.evidence||[node.id==='identity'?'User, role, MFA and access-review extracts':'Approved change tickets and deployment logs'];
+  const prps=prpsFor(node);
   const outputs={
     access:`ACCESS AGENT — ${node.label}\n\nSystem: ${system.label}\nFocus: JML completeness, privileged access, authentication and periodic review.\nRisk signal: ${risks[0]}\nSuggested test: Obtain the complete user population, reconcile it to HR leavers, isolate privileged roles, and inspect evidence of reviewer challenge.`,
-    review:`REVIEW NOTE AGENT — DRAFT\n\nArea reviewed: ${node.label} (${system.label})\nRisk: ${risks.join('; ')}\nControl response: ${controls.join('; ')}\nReview note: Confirm that the evidence is complete, covers the audit period, identifies exceptions, and documents how exceptions were resolved before concluding on control effectiveness.`,
+    review:`REVIEW NOTE AGENT — DRAFT\n\nArea reviewed: ${node.label} (${system.label})\nRisk: ${risks.join('; ')}\nPRPs: ${prps.join('; ')||'No PRPs mapped'}\nControl response: ${controls.join('; ')}\nReview note: Confirm that the evidence is complete, covers the audit period, identifies exceptions, and documents how exceptions were resolved before concluding on control effectiveness.`,
     evidence:`EVIDENCE AGENT — REQUEST LIST\n\n${evidence.map((e,i)=>`${i+1}. ${e}`).join('\n')}\n${evidence.length+1}. Evidence owner and extraction date\n${evidence.length+2}. Completeness and accuracy support\n${evidence.length+3}. Exception population and remediation proof`,
-    control:`CONTROL AGENT — TEST PLAN\n\n${controls.map((c,i)=>`${i+1}. ${c}: inspect design, select evidence, test operation, record exceptions.`).join('\n')}\n\nLink each result back to the mapped PRP and downstream systems.`,
+    control:`CONTROL AGENT — TEST PLAN\n\nMapped PRPs: ${prps.join('; ')||'None'}\n\n${controls.map((c,i)=>`${i+1}. ${c}: inspect design, select evidence, test operation, record exceptions.`).join('\n')}\n\nLink each result back to the mapped PRP and downstream systems.`,
     pbc:`PBC AGENT\n\nContext ready for ${system.label} / ${node.label}. Use “Open PBC Generator” below to create the scoped request list.`,
     walkthrough:`WALKTHROUGH AGENT\n\nInterview context ready. Ask the owner to demonstrate the process, one normal transaction, one exception, the related control evidence, and downstream hand-offs.`,
   };
@@ -918,7 +946,7 @@ function renderRiskPanel(step){
   const impacts=step.downstream.map(id=>PROCESS_STEPS.find(x=>x.id===id)||SUPPORT_NODES.find(x=>x.id===id)).filter(Boolean);
   const contacts=contactsForSystem(step.system).slice(0,2);
   const el=document.getElementById('ls-panel-content'); document.getElementById('ls-panel-empty').style.display='none'; el.style.display='flex';
-  el.innerHTML=`<div class="lsp-header"><div class="lsp-type-badge" style="background:${RISK_COLORS[step.risk]}">${step.risk.toUpperCase()} RISK</div><div class="lsp-title">${step.label}</div><div class="lsp-fn">${step.sub} · ${s.label}</div></div><div class="risk-section"><div class="risk-section-title">Key risks</div>${step.risks.map(r=>`<div class="risk-card ${step.risk}">${r}</div>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Process risk points (PRPs)</div>${step.prps.map(p=>`<span class="prp-chip">${p}</span>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Key controls</div>${step.controls.map(c=>`<div class="risk-card low">✓ ${c}</div>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Expected evidence</div>${step.evidence.map(e=>`<div class="risk-card">📎 ${e}</div>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Knock-on systems</div>${impacts.length?impacts.map(i=>`<span class="impact-chip" onclick="selectRiskNode(${i.targets?'SUPPORT_NODES':'PROCESS_STEPS'}.find(x=>x.id==='${i.id}'))">→ ${i.label}</span>`).join(''):'<span style="font-size:12px;color:#5a7090">End of mapped flow</span>'}</div><div class="risk-section"><div class="risk-section-title">Linked people & agents</div>${contacts.map(c=>`<div style="font-size:11px;color:#7a9ab8;margin-bottom:5px">${c.icon} ${c.name} · ${c.role}</div>`).join('')}${renderAgentWorkspace(step)}</div>`;
+  el.innerHTML=`<div class="lsp-header"><div class="lsp-type-badge" style="background:${RISK_COLORS[step.risk]}">${step.risk.toUpperCase()} RISK</div><div class="lsp-title">${step.label}</div><div class="lsp-fn">${step.sub} · ${s.label}</div></div><div class="risk-section"><div class="risk-section-title">Key risks</div>${step.risks.map(r=>`<div class="risk-card ${step.risk}">${r}</div>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Process risk points (PRPs)</div>${renderPrpEditor(step)}</div><div class="risk-section"><div class="risk-section-title">Key controls</div>${step.controls.map(c=>`<div class="risk-card low">✓ ${c}</div>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Expected evidence</div>${step.evidence.map(e=>`<div class="risk-card">📎 ${e}</div>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Knock-on systems</div>${impacts.length?impacts.map(i=>`<span class="impact-chip" onclick="selectRiskNode(${i.targets?'SUPPORT_NODES':'PROCESS_STEPS'}.find(x=>x.id==='${i.id}'))">→ ${i.label}</span>`).join(''):'<span style="font-size:12px;color:#5a7090">End of mapped flow</span>'}</div><div class="risk-section"><div class="risk-section-title">Linked people & agents</div>${contacts.map(c=>`<div style="font-size:11px;color:#7a9ab8;margin-bottom:5px">${c.icon} ${c.name} · ${c.role}</div>`).join('')}${renderAgentWorkspace(step)}</div>`;
 }
 
 function renderSupportRiskPanel(node){
@@ -926,7 +954,7 @@ function renderSupportRiskPanel(node){
   const affected=node.targets.map(id=>PROCESS_STEPS.find(x=>x.id===id)).filter(Boolean);
   const risk=node.id==='identity'?'A failure in identity lifecycle, MFA or privileged access can affect every authenticated financial application.':'A weak change-approval workflow can permit unauthorised configuration or code changes across connected applications.';
   const el=document.getElementById('ls-panel-content'); document.getElementById('ls-panel-empty').style.display='none'; el.style.display='flex';
-  el.innerHTML=`<div class="lsp-header"><div class="lsp-type-badge" style="background:#7c3aed">CROSS-CUTTING SYSTEM</div><div class="lsp-title">${node.label}</div><div class="lsp-fn">${node.sub} · ${s.function}</div></div><div class="risk-section"><div class="risk-section-title">Concentration risk</div><div class="risk-card ${node.risk}">${risk}</div></div><div class="risk-section"><div class="risk-section-title">Knock-on process steps</div>${affected.map(i=>`<span class="impact-chip" onclick="selectRiskNode(PROCESS_STEPS.find(x=>x.id==='${i.id}'))">→ ${i.label}</span>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Audit response</div><div class="risk-card">Test the central control once, then map the result to every relying system. A failed control should automatically raise the risk rating of all affected steps.</div></div><div class="risk-section"><div class="risk-section-title">Agent access point</div>${renderAgentWorkspace(node)}</div>`;
+  el.innerHTML=`<div class="lsp-header"><div class="lsp-type-badge" style="background:#7c3aed">CROSS-CUTTING SYSTEM</div><div class="lsp-title">${node.label}</div><div class="lsp-fn">${node.sub} · ${s.function}</div></div><div class="risk-section"><div class="risk-section-title">Concentration risk</div><div class="risk-card ${node.risk}">${risk}</div></div><div class="risk-section"><div class="risk-section-title">Process risk points (PRPs)</div>${renderPrpEditor(node)}</div><div class="risk-section"><div class="risk-section-title">Knock-on process steps</div>${affected.map(i=>`<span class="impact-chip" onclick="selectRiskNode(PROCESS_STEPS.find(x=>x.id==='${i.id}'))">→ ${i.label}</span>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Audit response</div><div class="risk-card">Test the central control once, then map the result to every relying system. A failed control should automatically raise the risk rating of all affected steps.</div></div><div class="risk-section"><div class="risk-section-title">Agent access point</div>${renderAgentWorkspace(node)}</div>`;
 }
 
 /* ── Contact Connection Map ───────────────────────────────── */

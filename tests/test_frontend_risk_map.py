@@ -23,6 +23,10 @@ def test_process_risk_view_has_required_linked_layers():
         "function addAgentToNode(nodeId)",
         "function runContextAgent(agentId,nodeId)",
         "itai-agent-slots",
+        "＋ Add PRP",
+        "function addPrpToNode(nodeId)",
+        "function removePrpFromNode(nodeId,index)",
+        "itai-custom-prps",
     ]
     for marker in required:
         assert marker in html

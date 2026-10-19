@@ -51,7 +51,7 @@
     .agent-add-row{display:flex;gap:7px;margin-top:8px}.agent-select{flex:1;min-width:0;background:#0f1623;color:#a0b8cc;border:1px solid #2a3d55;border-radius:7px;padding:7px;font-size:11px}.agent-add-btn{background:#253c61;color:#cfe3f7;border:1px solid #3b5e88;border-radius:7px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer}
     .agent-output{display:none;margin-top:10px;padding:11px;border-radius:8px;background:#09111d;border:1px solid #28527a;color:#9fb9d2;font-size:11.5px;line-height:1.55;white-space:pre-wrap}
     .agent-count{font-size:8px;font-weight:800;fill:#fff;pointer-events:none}
-    @media(max-width:850px){body{height:auto;min-height:100vh;overflow:auto}.nav{padding:11px 14px;flex-wrap:wrap}.engagement{display:none}#view-landscape,#detail-main{flex-direction:column}#ls-network-col,#network-col{flex:0 0 62vh;border-right:none;border-bottom:1px solid #1e2d45}#ls-panel-col,#panel-col{min-height:52vh}#ls-toolbar{overflow-x:auto}.tb-sub{display:none}.risk-summary{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:850px){body{height:auto;min-height:100vh;overflow:auto}.nav{padding:11px 14px;flex-wrap:wrap}.engagement{display:none}#view-landscape,#detail-main{flex-direction:column}#ls-network-col,#network-col{flex:0 0 62vh;border-right:none;border-bottom:1px solid #1e2d45}#ls-panel-col,#panel-col{min-height:52vh}#ls-toolbar{overflow-x:auto}.tb-title,.tb-sub{display:none}#risk-toggle{order:-1}.risk-summary{grid-template-columns:repeat(3,1fr)}}
 
     /* ── Landscape right panel ──────────────────── */
     #ls-panel-col{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#111926}
@@ -162,6 +162,8 @@
     .toggle-btn{padding:4px 12px;border-radius:20px;border:1px solid #2a3d55;background:#1a2540;font-size:11.5px;font-weight:600;color:#7a9ab8;cursor:pointer;transition:all .15s}
     .toggle-btn:hover{background:#1e3060}
     .toggle-btn.active{background:#7c3aed;border-color:#7c3aed;color:#fff}
+    #risk-toggle{background:#312e81;border-color:#6366f1;color:#dbeafe;box-shadow:0 0 0 1px rgba(99,102,241,.2);white-space:nowrap}
+    #risk-toggle:hover,#risk-toggle.active{background:#4f46e5;border-color:#818cf8;color:#fff}
 
     .lsp-contacts{padding:14px 22px 0}
     .lsp-contacts-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#a78bfa;margin-bottom:10px;display:flex;align-items:center;gap:6px}
@@ -205,9 +207,9 @@
   <div id="ls-network-col">
     <div id="ls-toolbar">
       <span class="tb-title">IT Landscape — ACME Corp</span>
+      <button class="toggle-btn" id="risk-toggle" onclick="toggleRiskMap()">⚡ NEW · Process & Risk Agents</button>
       <span class="tb-sub">· 5 systems in scope</span>
       <button class="toggle-btn" id="contacts-toggle" onclick="toggleContacts()">👥 Stakeholders</button>
-      <button class="toggle-btn" id="risk-toggle" onclick="toggleRiskMap()">⚡ Process & Risk</button>
       <button class="toggle-btn" id="connmap-toggle" onclick="toggleConnectionMap()">🔗 Contact Map</button>
       <button class="toggle-btn" id="org-toggle" onclick="toggleOrgChart()">🏢 Org Chart</button>
       <span style="margin-left:auto;font-size:11px;color:#94a3b8" id="ls-hint">Click a system to explore</span>

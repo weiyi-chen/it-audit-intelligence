@@ -19,6 +19,7 @@ def test_process_risk_view_has_required_linked_layers():
         "PBC Agent",
         "Walkthrough Agent",
         "Access Agent",
+        "Risk Agent",
         "Review Note Agent",
         "function addAgentToNode(nodeId)",
         "function runContextAgent(agentId,nodeId)",
@@ -27,6 +28,8 @@ def test_process_risk_view_has_required_linked_layers():
         "function addPrpToNode(nodeId)",
         "function removePrpFromNode(nodeId,index)",
         "itai-custom-prps",
+        "examples + your additions",
+        "selectRiskNode(PROCESS_STEPS.find(step=>step.id==='payroll'))",
     ]
     for marker in required:
         assert marker in html

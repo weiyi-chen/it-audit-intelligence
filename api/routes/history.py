@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from api.database import db
 from api.schemas import HistoryResponse, RunDetail, RunSummary, ScopeChangeSummary
+from api.settings import public_demo_enabled
 
 router = APIRouter()
 
@@ -19,6 +20,8 @@ async def list_history(
     limit: int = Query(default=50, ge=1, le=200, description="Max rows to return"),
 ) -> HistoryResponse:
     """Return recent PBC generation runs, newest first."""
+    if public_demo_enabled():
+        return HistoryResponse(runs=[], total=0)
     rows = db.list_runs(limit=limit)
     summaries = [_to_summary(r) for r in rows]
     return HistoryResponse(runs=summaries, total=len(summaries))
@@ -27,6 +30,8 @@ async def list_history(
 @router.get("/api/pbc/runs/{run_id}", response_model=RunDetail, tags=["history"])
 async def get_run(run_id: int) -> RunDetail:
     """Return a single run with the xlsx included as base64."""
+    if public_demo_enabled():
+        raise HTTPException(403, "Run history is disabled in the public demo.")
     row = db.get_run(run_id)
     if row is None:
         raise HTTPException(404, f"Run {run_id} not found.")
@@ -36,6 +41,8 @@ async def get_run(run_id: int) -> RunDetail:
 @router.delete("/api/pbc/runs/{run_id}", tags=["history"])
 async def delete_run(run_id: int) -> dict:
     """Remove a run from history (irreversible)."""
+    if public_demo_enabled():
+        raise HTTPException(403, "Run history is disabled in the public demo.")
     deleted = db.delete_run(run_id)
     if not deleted:
         raise HTTPException(404, f"Run {run_id} not found.")

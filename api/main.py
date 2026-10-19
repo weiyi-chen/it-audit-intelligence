@@ -24,6 +24,7 @@ Tighten this in production.
 from __future__ import annotations
 
 import os
+import pathlib
 import sys
 import types
 
@@ -50,8 +51,6 @@ if _ROOT not in sys.path:
 
 _FRONTEND_DIR = pathlib.Path(_ROOT) / "frontend"
 
-import pathlib
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -65,6 +64,8 @@ from api.routes.review        import router as review_router
 from api.routes.understanding import router as understanding_router
 from api.schemas        import HealthResponse
 from api.checkpointer  import checkpointer_info
+from api.rate_limit import demo_rate_limit
+from api.settings import public_demo_enabled
 from core.llm           import has_real_key
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -81,7 +82,14 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins     = ["*"],   # tighten for production
+    allow_origins     = [
+        origin.strip()
+        for origin in os.getenv(
+            "ALLOWED_ORIGINS",
+            "https://weiyi-chen.github.io,http://localhost:8000,http://localhost:8080",
+        ).split(",")
+        if origin.strip()
+    ],
     allow_credentials = True,
     allow_methods     = ["*"],
     allow_headers     = ["*"],
@@ -93,6 +101,21 @@ app.include_router(history_router)
 app.include_router(config_router)
 app.include_router(review_router)
 app.include_router(understanding_router)
+
+# Register API health before the single-segment frontend fallback route.
+@app.get("/health", response_model=HealthResponse, tags=["meta"])
+async def health() -> HealthResponse:
+    """Service liveness + public demo configuration."""
+    cp = checkpointer_info()
+    return HealthResponse(
+        status                = "ok",
+        version               = "0.1.0",
+        llm_mode              = "real" if has_real_key() else "mock",
+        checkpointer          = cp["type"],
+        checkpoint_persistent = cp["persistent"],
+        public_demo           = public_demo_enabled(),
+        rate_limit_per_hour   = demo_rate_limit(),
+    )
 
 # ── serve frontend static files (for production/Railway) ─────────────────────
 # In local dev you still open files directly or via `python -m http.server`.
@@ -113,23 +136,6 @@ if _FRONTEND_DIR.is_dir():
             return FileResponse(str(target))
         from fastapi import HTTPException as _HTTPException
         raise _HTTPException(404, f"Page not found: {page}")
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Health check
-# ─────────────────────────────────────────────────────────────────────────────
-
-@app.get("/health", response_model=HealthResponse, tags=["meta"])
-async def health() -> HealthResponse:
-    """Service liveness + LLM mode indicator."""
-    cp = checkpointer_info()
-    return HealthResponse(
-        status                = "ok",
-        version               = "0.1.0",
-        llm_mode              = "real" if has_real_key() else "mock",
-        checkpointer          = cp["type"],
-        checkpoint_persistent = cp["persistent"],
-    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

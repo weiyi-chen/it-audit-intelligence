@@ -352,7 +352,7 @@ No other changes to scope.</textarea>
 
     <div class="btn-row">
       <button class="btn-download" id="btn-download" onclick="downloadXlsx()">⬇ Download PBC.xlsx</button>
-      <button class="btn-email" onclick="openEmailModal()">✉ Email to client</button>
+      <button class="btn-email" id="btn-email" onclick="openEmailModal()">✉ Email to client</button>
       <button class="btn-reset" onclick="resetForm()">↩ Start over</button>
     </div>
 
@@ -396,17 +396,8 @@ No other changes to scope.</textarea>
   </div>
 </div>
 
-<script>
-/* config.js is served by FastAPI and sets window.API_BASE to the Railway URL.
-   In local dev (opening this file directly), it's not reachable and we fall
-   back to localhost:8000. The dynamic load below is non-blocking. */
-(function() {
-  const s = document.createElement("script");
-  s.src = "/config.js";
-  s.onerror = function() {};  // silently ignore in local dev
-  document.head.appendChild(s);
-})();
-</script>
+<!-- Loaded synchronously so API_BASE is ready before the application starts. -->
+<script src="config.js"></script>
 <script>
 // ── Config ────────────────────────────────────────────────────────────────────
 const API_BASE = window.API_BASE || "http://localhost:8000";
@@ -428,10 +419,15 @@ async function checkHealth() {
     const data = await res.json();
     statusEl.className = "api-status online";
     dotEl.className    = "api-dot dot-online";
-    const mode = data.llm_mode === "real" ? "🟢 real LLM" : "🟡 mock LLM";
+    const mode = data.llm_mode === "real" ? "🟢 real LLM" : "🟦 safe demo mode";
     const cp   = data.checkpointer === "sqlite" ? "💾 SQLite checkpoint" : "🧠 memory checkpoint";
-    textEl.textContent = `Backend online · ${mode} · ${cp}`;
-    badgeEl.textContent = data.llm_mode === "real" ? "Real API" : "Mock mode";
+    const limit = data.rate_limit_per_hour ? ` · ${data.rate_limit_per_hour}/hour limit` : "";
+    textEl.textContent = `Backend online · ${mode} · ${cp}${limit}`;
+    badgeEl.textContent = data.llm_mode === "real" ? "Live AI" : "Public Demo";
+    if (data.public_demo) {
+      document.getElementById("btn-email").style.display = "none";
+      document.getElementById("history-section").style.display = "none";
+    }
   } catch {
     statusEl.className = "api-status offline";
     dotEl.className    = "api-dot dot-offline";
@@ -567,12 +563,18 @@ function showResults(data) {
   document.getElementById("r-carried").textContent = breakdown.carried_over ?? 0;
   document.getElementById("r-removed").textContent = breakdown.removed      ?? 0;
 
-  document.getElementById("result-meta").innerHTML = `
-    <span>📁 ${data.client_name} · ${data.audit_period}</span>
-    <span>📊 ${data.item_count} total items</span>
-    <span>⏱ ${data.elapsed_seconds}s</span>
-    <span>${data.llm_mode === "real" ? "🟢 Real LLM" : "🟡 Mock LLM"}</span>
-  `;
+  const resultMeta = document.getElementById("result-meta");
+  resultMeta.replaceChildren();
+  [
+    `📁 ${data.client_name} · ${data.audit_period}`,
+    `📊 ${data.item_count} total items`,
+    `⏱ ${data.elapsed_seconds}s`,
+    data.llm_mode === "real" ? "🟢 Real LLM" : "🔵 Safe Demo",
+  ].forEach(value => {
+    const span = document.createElement("span");
+    span.textContent = value;
+    resultMeta.appendChild(span);
+  });
 
   const list = document.getElementById("changes-list");
   list.innerHTML = "";
@@ -589,7 +591,12 @@ function showResults(data) {
     data.scope_changes.forEach(c => {
       const [cls, lbl] = TAG[c.change_type] ?? ["tag-reg", c.change_type];
       const li = document.createElement("li");
-      li.innerHTML = `<span class="tag ${cls}">${lbl}</span><span>${c.description}</span>`;
+      const tag = document.createElement("span");
+      tag.className = `tag ${cls}`;
+      tag.textContent = lbl;
+      const description = document.createElement("span");
+      description.textContent = c.description;
+      li.append(tag, description);
       list.appendChild(li);
     });
   }

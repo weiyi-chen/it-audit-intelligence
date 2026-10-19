@@ -27,7 +27,7 @@ import time
 import types
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 
 # ── langgraph stub (if not installed) ────────────────────────────────────────
 try:
@@ -62,12 +62,15 @@ from api.schemas import (
     ScopeChangeSummary,
 )
 from api.database import db
+from api.rate_limit import enforce_demo_rate_limit
+from api.settings import public_demo_enabled
 
 router = APIRouter()
 
 
 @router.post("/api/pbc/generate", response_model=PBCGenerateResponse)
 async def generate_pbc(
+    request: Request,
     scope_text:   str        = Form(...,  description="Current-year scope memo text"),
     client_name:  str        = Form("Client",  description="Client name"),
     audit_period: str        = Form("FY2025",  description="Audit period, e.g. FY2025"),
@@ -78,14 +81,25 @@ async def generate_pbc(
     """
     Run the Module A PBC generation pipeline and return the result xlsx.
     """
+    if public_demo_enabled():
+        enforce_demo_rate_limit(request)
     t0 = time.time()
+
+    if len(scope_text) > 10_000:
+        raise HTTPException(413, "Scope memo is limited to 10,000 characters in the public demo.")
+    if len(client_name) > 100 or len(audit_period) > 30:
+        raise HTTPException(422, "Client name or audit period is too long.")
 
     # ── save uploaded xlsx to a temp file ────────────────────────────────────
     prior_path = ""
     tmp_in: Optional[str] = None
 
     if prior_xlsx and prior_xlsx.filename:
-        content = await prior_xlsx.read()
+        content = await prior_xlsx.read(5 * 1024 * 1024 + 1)
+        if len(content) > 5 * 1024 * 1024:
+            raise HTTPException(413, "Uploads are limited to 5 MB in the public demo.")
+        if not prior_xlsx.filename.lower().endswith(".xlsx"):
+            raise HTTPException(415, "Only .xlsx files are accepted.")
         if content:
             with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
                 f.write(content)
@@ -146,18 +160,19 @@ async def generate_pbc(
 
         # ── persist to SQLite ─────────────────────────────────────────────────
         try:
-            db.save_run(
-                client_name      = client_name,
-                audit_period     = audit_period,
-                scope_text       = scope_text,
-                item_count       = len(items),
-                llm_mode         = llm_mode,
-                elapsed_secs     = elapsed_secs,
-                xlsx_base64      = xlsx_b64,
-                xlsx_filename    = out_filename,
-                scope_changes    = changes,
-                status_breakdown = by_status,
-            )
+            if not public_demo_enabled():
+                db.save_run(
+                    client_name      = client_name,
+                    audit_period     = audit_period,
+                    scope_text       = scope_text,
+                    item_count       = len(items),
+                    llm_mode         = llm_mode,
+                    elapsed_secs     = elapsed_secs,
+                    xlsx_base64      = xlsx_b64,
+                    xlsx_filename    = out_filename,
+                    scope_changes    = changes,
+                    status_breakdown = by_status,
+                )
         except Exception:
             pass  # storage failure must never break the main response
 

@@ -16,6 +16,7 @@ import os
 from fastapi import APIRouter, HTTPException
 
 from api.schemas import SendEmailRequest, SendEmailResponse
+from api.settings import public_demo_enabled
 
 router = APIRouter()
 
@@ -27,6 +28,9 @@ async def send_email(req: SendEmailRequest) -> SendEmailResponse:
 
     Requires RESEND_API_KEY and SENDER_FROM in environment / .env.
     """
+    if public_demo_enabled():
+        raise HTTPException(403, "Email dispatch is disabled in the public demo.")
+
     api_key    = os.getenv("RESEND_API_KEY", "")
     sender     = os.getenv("SENDER_FROM", "")
 

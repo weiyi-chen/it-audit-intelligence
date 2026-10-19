@@ -18,6 +18,8 @@ class HealthResponse(BaseModel):
     llm_mode: str            # "real" | "mock"
     checkpointer: str = ""   # "memory" | "sqlite"
     checkpoint_persistent: bool = False
+    public_demo: bool = True
+    rate_limit_per_hour: int = 5
 
 
 # ─────────────────────────────────────────────────────────────────────────────

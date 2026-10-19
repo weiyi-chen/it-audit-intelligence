@@ -12,6 +12,13 @@ Direct demos:
 - IT Understanding Map: https://weiyi-chen.github.io/it-audit-intelligence/it_understanding.html
 - Walkthrough Tracker: https://weiyi-chen.github.io/it-audit-intelligence/audit_tracker.html
 
+The PBC generator is connected to a working, rate-limited public backend:
+
+- Public API: https://api-production-e879.up.railway.app
+- Health check: https://api-production-e879.up.railway.app/health
+- Demo allowance: 5 generations per IP per hour
+- No API key required; the public deployment uses deterministic mock mode
+
 ## Modules
 
 - **Module A — PBC Checklist Generator**
@@ -74,7 +81,7 @@ pytest tests -q
 The suite covers scope parsing, checklist decisions, template generation,
 batch fallback behaviour, Excel round trips, graph behaviour, effective-date
 filtering, guidance retrieval, citation propagation, and deterministic sample
-size updates. The current suite has 155 passing tests.
+size updates. The current suite has 159 passing tests.
 
 ## Quick Start
 

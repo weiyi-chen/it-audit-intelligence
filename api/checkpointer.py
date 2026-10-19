@@ -27,13 +27,22 @@ from pathlib import Path
 
 # ── try SqliteSaver first (needs: pip install langgraph-checkpoint-sqlite) ────
 _checkpointer = None
+_checkpointer_context = None
 
 try:
     from langgraph.checkpoint.sqlite import SqliteSaver  # type: ignore[import]
 
     _ROOT = Path(__file__).resolve().parent.parent
     _CP_DB = Path(os.getenv("CHECKPOINT_DB", str(_ROOT / "checkpoints.db")))
-    _checkpointer = SqliteSaver.from_conn_string(str(_CP_DB))
+    # langgraph-checkpoint-sqlite 3.x returns a context manager here, while
+    # older releases returned the saver directly. Keep the context alive for
+    # the process lifetime so both APIs are supported.
+    _candidate = SqliteSaver.from_conn_string(str(_CP_DB))
+    if hasattr(_candidate, "__enter__"):
+        _checkpointer_context = _candidate
+        _checkpointer = _checkpointer_context.__enter__()
+    else:
+        _checkpointer = _candidate
     _CHECKPOINTER_TYPE = "sqlite"
 
 except ImportError:

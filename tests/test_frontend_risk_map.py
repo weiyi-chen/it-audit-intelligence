@@ -18,6 +18,11 @@ def test_process_risk_view_has_required_linked_layers():
         "Knock-on systems",
         "PBC Agent",
         "Walkthrough Agent",
+        "Access Agent",
+        "Review Note Agent",
+        "function addAgentToNode(nodeId)",
+        "function runContextAgent(agentId,nodeId)",
+        "itai-agent-slots",
     ]
     for marker in required:
         assert marker in html

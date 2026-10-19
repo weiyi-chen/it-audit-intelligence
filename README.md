@@ -34,6 +34,7 @@ The PBC generator is connected to a working, rate-limited public backend:
   - Maps in-scope financial systems, business processes, stakeholders, vendors, data flows, and ITGC areas.
   - Includes an interactive IT landscape, system drill-down, stakeholder coverage map, and organisation chart.
   - Adds a linked Process & Risk Intelligence view covering risks, PRPs, controls, evidence, knock-on systems, and audit-agent handoffs.
+  - Supports configurable Agent Slots at each process step, including Access, Review Note, Evidence, Control, PBC, and Walkthrough agents.
 
 - **Module C — Walkthrough Tracker**
   - Tracks stakeholder walkthrough questions, prior-year findings, new current-year questions, notes, and coverage progress.

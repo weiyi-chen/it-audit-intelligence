@@ -47,6 +47,10 @@
     .agent-btn{display:flex;align-items:center;gap:8px;padding:9px;border:1px solid #2a3d55;background:#17243a;border-radius:8px;color:#b7cbe0;text-decoration:none;font-size:11px;font-weight:700;cursor:pointer}
     .agent-btn:hover{background:#1e3060;border-color:#4a86c8}
     .agent-icon{width:25px;height:25px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:#253c61}
+    .agent-slot{margin-top:9px;padding:10px;border:1px dashed #405a78;border-radius:9px;background:#101b2b}
+    .agent-add-row{display:flex;gap:7px;margin-top:8px}.agent-select{flex:1;min-width:0;background:#0f1623;color:#a0b8cc;border:1px solid #2a3d55;border-radius:7px;padding:7px;font-size:11px}.agent-add-btn{background:#253c61;color:#cfe3f7;border:1px solid #3b5e88;border-radius:7px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer}
+    .agent-output{display:none;margin-top:10px;padding:11px;border-radius:8px;background:#09111d;border:1px solid #28527a;color:#9fb9d2;font-size:11.5px;line-height:1.55;white-space:pre-wrap}
+    .agent-count{font-size:8px;font-weight:800;fill:#fff;pointer-events:none}
     @media(max-width:850px){body{height:auto;min-height:100vh;overflow:auto}.nav{padding:11px 14px;flex-wrap:wrap}.engagement{display:none}#view-landscape,#detail-main{flex-direction:column}#ls-network-col,#network-col{flex:0 0 62vh;border-right:none;border-bottom:1px solid #1e2d45}#ls-panel-col,#panel-col{min-height:52vh}#ls-toolbar{overflow-x:auto}.tb-sub{display:none}.risk-summary{grid-template-columns:repeat(3,1fr)}}
 
     /* ── Landscape right panel ──────────────────── */
@@ -428,6 +432,29 @@ const SUPPORT_NODES = [
 ];
 
 const RISK_COLORS = {high:'#ef4444',medium:'#f59e0b',low:'#22c55e'};
+
+const AGENT_CATALOG = {
+  access:{name:'Access Agent',icon:'🔐',description:'Analyse JML, privileged access, UAR and authentication exposure.'},
+  review:{name:'Review Note Agent',icon:'📝',description:'Draft a concise audit review note from the selected context.'},
+  evidence:{name:'Evidence Agent',icon:'📎',description:'Build an evidence request and completeness checklist.'},
+  control:{name:'Control Agent',icon:'🛡️',description:'Map risks and PRPs to controls and proposed test steps.'},
+  pbc:{name:'PBC Agent',icon:'📋',description:'Send this context into the PBC checklist generator.'},
+  walkthrough:{name:'Walkthrough Agent',icon:'🎙️',description:'Open the interview workflow for this system.'},
+};
+
+const DEFAULT_AGENT_PLACEMENT = {
+  worker:['access','review'],payroll:['review','evidence'],posting:['evidence','review'],
+  close:['access','control','review'],reporting:['review','evidence'],
+  identity:['access','review'],change:['control','review'],
+};
+
+function loadAgentAssignments(){
+  try { return {...DEFAULT_AGENT_PLACEMENT,...JSON.parse(localStorage.getItem('itai-agent-slots')||'{}')}; }
+  catch { return {...DEFAULT_AGENT_PLACEMENT}; }
+}
+let agentAssignments = loadAgentAssignments();
+function agentsFor(nodeId){ return agentAssignments[nodeId] || []; }
+function saveAgentAssignments(){ try { localStorage.setItem('itai-agent-slots',JSON.stringify(agentAssignments)); } catch {} }
 
 /* ═══════════════════════════════════════════════════
    DETAIL DATA (per in-scope system × 7 IT areas)
@@ -823,12 +850,16 @@ function drawRiskMap(){
   steps.append('text').attr('x',-56).attr('y',0).attr('fill','#5a7090').attr('font-size',9.5).text(d=>d.sub);
   steps.append('rect').attr('x',-56).attr('y',14).attr('width',112).attr('height',19).attr('rx',9).attr('fill',d=>LS_SYSTEMS[d.system].color).attr('opacity',.85);
   steps.append('text').attr('x',0).attr('y',24).attr('text-anchor','middle').attr('dominant-baseline','central').attr('fill','#fff').attr('font-size',9).attr('font-weight',700).text(d=>LS_SYSTEMS[d.system].short);
+  steps.append('circle').attr('cx',56).attr('cy',-31).attr('r',12).attr('fill','#2563eb').attr('stroke','#93c5fd').attr('stroke-width',1.5);
+  steps.append('text').attr('class','agent-count').attr('x',56).attr('y',-31).attr('text-anchor','middle').attr('dominant-baseline','central').text(d=>`🤖${agentsFor(d.id).length}`);
 
   const support=g.selectAll('.support-node').data(SUPPORT_NODES).enter().append('g').attr('class','support-node')
     .attr('transform',d=>`translate(${d.x},${d.y})`).style('cursor','pointer').on('click',(_,d)=>selectRiskNode(d));
   support.append('rect').attr('x',-72).attr('y',-34).attr('width',144).attr('height',68).attr('rx',12).attr('fill','#1a1030').attr('stroke','#a855f7').attr('stroke-width',1.5).attr('stroke-dasharray','5,3');
   support.append('text').attr('y',-5).attr('text-anchor','middle').attr('fill','#d8b4fe').attr('font-size',12).attr('font-weight',800).text(d=>d.label);
   support.append('text').attr('y',14).attr('text-anchor','middle').attr('fill','#7c68a0').attr('font-size',9.5).text(d=>d.sub);
+  support.append('circle').attr('cx',56).attr('cy',-20).attr('r',12).attr('fill','#2563eb').attr('stroke','#93c5fd').attr('stroke-width',1.5);
+  support.append('text').attr('class','agent-count').attr('x',56).attr('y',-20).attr('text-anchor','middle').attr('dominant-baseline','central').text(d=>`🤖${agentsFor(d.id).length}`);
   g.append('text').attr('x',40).attr('y',452).attr('fill','#3a5070').attr('font-size',10).text('Dashed relationships show cross-cutting controls that can create knock-on risk across multiple process steps.');
 }
 
@@ -847,12 +878,45 @@ function selectRiskNode(node){
   renderRiskPanel(node);
 }
 
+function renderAgentWorkspace(node){
+  const assigned=agentsFor(node.id);
+  const available=Object.entries(AGENT_CATALOG).filter(([id])=>!assigned.includes(id));
+  return `<div class="agent-slot"><div style="font-size:10px;color:#6f8ba8;margin-bottom:8px">AGENT SLOTS · saved in this browser</div><div class="agent-grid">${assigned.map(id=>{const a=AGENT_CATALOG[id];return `<button class="agent-btn" title="${a.description}" onclick="runContextAgent('${id}','${node.id}')"><span class="agent-icon">${a.icon}</span>${a.name}</button>`}).join('')||'<span style="font-size:11px;color:#5a7090">No agents assigned yet.</span>'}</div>${available.length?`<div class="agent-add-row"><select class="agent-select" id="agent-select-${node.id}">${available.map(([id,a])=>`<option value="${id}">${a.icon} ${a.name}</option>`).join('')}</select><button class="agent-add-btn" onclick="addAgentToNode('${node.id}')">＋ Add Agent</button></div>`:'<div style="font-size:10px;color:#4a6080">All available agents are assigned.</div>'}<div class="agent-output" id="agent-output-${node.id}"></div></div>`;
+}
+
+function addAgentToNode(nodeId){
+  const select=document.getElementById(`agent-select-${nodeId}`); if(!select) return;
+  agentAssignments[nodeId]=[...new Set([...(agentAssignments[nodeId]||[]),select.value])];
+  saveAgentAssignments(); drawRiskMap();
+  const node=PROCESS_STEPS.find(x=>x.id===nodeId)||SUPPORT_NODES.find(x=>x.id===nodeId); selectRiskNode(node);
+}
+
+function runContextAgent(agentId,nodeId){
+  const node=PROCESS_STEPS.find(x=>x.id===nodeId)||SUPPORT_NODES.find(x=>x.id===nodeId);
+  const out=document.getElementById(`agent-output-${nodeId}`); if(!node||!out) return;
+  const system=LS_SYSTEMS[node.system];
+  const risks=node.risks||[node.id==='identity'?'Central identity control failure affects all relying applications.':'Weak change governance affects connected applications.'];
+  const controls=node.controls||[node.id==='identity'?'JML, MFA, privileged access and UAR controls':'Change approval, testing and segregation controls'];
+  const evidence=node.evidence||[node.id==='identity'?'User, role, MFA and access-review extracts':'Approved change tickets and deployment logs'];
+  const outputs={
+    access:`ACCESS AGENT — ${node.label}\n\nSystem: ${system.label}\nFocus: JML completeness, privileged access, authentication and periodic review.\nRisk signal: ${risks[0]}\nSuggested test: Obtain the complete user population, reconcile it to HR leavers, isolate privileged roles, and inspect evidence of reviewer challenge.`,
+    review:`REVIEW NOTE AGENT — DRAFT\n\nArea reviewed: ${node.label} (${system.label})\nRisk: ${risks.join('; ')}\nControl response: ${controls.join('; ')}\nReview note: Confirm that the evidence is complete, covers the audit period, identifies exceptions, and documents how exceptions were resolved before concluding on control effectiveness.`,
+    evidence:`EVIDENCE AGENT — REQUEST LIST\n\n${evidence.map((e,i)=>`${i+1}. ${e}`).join('\n')}\n${evidence.length+1}. Evidence owner and extraction date\n${evidence.length+2}. Completeness and accuracy support\n${evidence.length+3}. Exception population and remediation proof`,
+    control:`CONTROL AGENT — TEST PLAN\n\n${controls.map((c,i)=>`${i+1}. ${c}: inspect design, select evidence, test operation, record exceptions.`).join('\n')}\n\nLink each result back to the mapped PRP and downstream systems.`,
+    pbc:`PBC AGENT\n\nContext ready for ${system.label} / ${node.label}. Use “Open PBC Generator” below to create the scoped request list.`,
+    walkthrough:`WALKTHROUGH AGENT\n\nInterview context ready. Ask the owner to demonstrate the process, one normal transaction, one exception, the related control evidence, and downstream hand-offs.`,
+  };
+  out.textContent=outputs[agentId]||'Agent output is not available.'; out.style.display='block';
+  if(agentId==='pbc') out.innerHTML += `\n\n<a style="color:#7eb8f7" href="pbc.html?system=${node.system}&process=${encodeURIComponent(node.label)}">Open PBC Generator →</a>`;
+  if(agentId==='walkthrough') out.innerHTML += `\n\n<a style="color:#7eb8f7" href="audit_tracker.html?sys=${node.system}&area=overview">Open Walkthrough Tracker →</a>`;
+}
+
 function renderRiskPanel(step){
   const s=LS_SYSTEMS[step.system];
   const impacts=step.downstream.map(id=>PROCESS_STEPS.find(x=>x.id===id)||SUPPORT_NODES.find(x=>x.id===id)).filter(Boolean);
   const contacts=contactsForSystem(step.system).slice(0,2);
   const el=document.getElementById('ls-panel-content'); document.getElementById('ls-panel-empty').style.display='none'; el.style.display='flex';
-  el.innerHTML=`<div class="lsp-header"><div class="lsp-type-badge" style="background:${RISK_COLORS[step.risk]}">${step.risk.toUpperCase()} RISK</div><div class="lsp-title">${step.label}</div><div class="lsp-fn">${step.sub} · ${s.label}</div></div><div class="risk-section"><div class="risk-section-title">Key risks</div>${step.risks.map(r=>`<div class="risk-card ${step.risk}">${r}</div>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Process risk points (PRPs)</div>${step.prps.map(p=>`<span class="prp-chip">${p}</span>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Key controls</div>${step.controls.map(c=>`<div class="risk-card low">✓ ${c}</div>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Expected evidence</div>${step.evidence.map(e=>`<div class="risk-card">📎 ${e}</div>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Knock-on systems</div>${impacts.length?impacts.map(i=>`<span class="impact-chip" onclick="selectRiskNode(${i.targets?'SUPPORT_NODES':'PROCESS_STEPS'}.find(x=>x.id==='${i.id}'))">→ ${i.label}</span>`).join(''):'<span style="font-size:12px;color:#5a7090">End of mapped flow</span>'}</div><div class="risk-section"><div class="risk-section-title">Linked people & agents</div>${contacts.map(c=>`<div style="font-size:11px;color:#7a9ab8;margin-bottom:5px">${c.icon} ${c.name} · ${c.role}</div>`).join('')}<div class="agent-grid"><a class="agent-btn" href="pbc.html?system=${step.system}&process=${encodeURIComponent(step.label)}"><span class="agent-icon">📋</span>PBC Agent</a><a class="agent-btn" href="audit_tracker.html?sys=${step.system}&area=overview"><span class="agent-icon">🎙️</span>Walkthrough Agent</a><button class="agent-btn" onclick="showDetail('${step.system}')"><span class="agent-icon">🛡️</span>Control Agent</button><button class="agent-btn" onclick="renderRiskPanel(PROCESS_STEPS.find(x=>x.id==='${step.id}'))"><span class="agent-icon">⚡</span>${step.agent}</button></div></div>`;
+  el.innerHTML=`<div class="lsp-header"><div class="lsp-type-badge" style="background:${RISK_COLORS[step.risk]}">${step.risk.toUpperCase()} RISK</div><div class="lsp-title">${step.label}</div><div class="lsp-fn">${step.sub} · ${s.label}</div></div><div class="risk-section"><div class="risk-section-title">Key risks</div>${step.risks.map(r=>`<div class="risk-card ${step.risk}">${r}</div>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Process risk points (PRPs)</div>${step.prps.map(p=>`<span class="prp-chip">${p}</span>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Key controls</div>${step.controls.map(c=>`<div class="risk-card low">✓ ${c}</div>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Expected evidence</div>${step.evidence.map(e=>`<div class="risk-card">📎 ${e}</div>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Knock-on systems</div>${impacts.length?impacts.map(i=>`<span class="impact-chip" onclick="selectRiskNode(${i.targets?'SUPPORT_NODES':'PROCESS_STEPS'}.find(x=>x.id==='${i.id}'))">→ ${i.label}</span>`).join(''):'<span style="font-size:12px;color:#5a7090">End of mapped flow</span>'}</div><div class="risk-section"><div class="risk-section-title">Linked people & agents</div>${contacts.map(c=>`<div style="font-size:11px;color:#7a9ab8;margin-bottom:5px">${c.icon} ${c.name} · ${c.role}</div>`).join('')}${renderAgentWorkspace(step)}</div>`;
 }
 
 function renderSupportRiskPanel(node){
@@ -860,7 +924,7 @@ function renderSupportRiskPanel(node){
   const affected=node.targets.map(id=>PROCESS_STEPS.find(x=>x.id===id)).filter(Boolean);
   const risk=node.id==='identity'?'A failure in identity lifecycle, MFA or privileged access can affect every authenticated financial application.':'A weak change-approval workflow can permit unauthorised configuration or code changes across connected applications.';
   const el=document.getElementById('ls-panel-content'); document.getElementById('ls-panel-empty').style.display='none'; el.style.display='flex';
-  el.innerHTML=`<div class="lsp-header"><div class="lsp-type-badge" style="background:#7c3aed">CROSS-CUTTING SYSTEM</div><div class="lsp-title">${node.label}</div><div class="lsp-fn">${node.sub} · ${s.function}</div></div><div class="risk-section"><div class="risk-section-title">Concentration risk</div><div class="risk-card ${node.risk}">${risk}</div></div><div class="risk-section"><div class="risk-section-title">Knock-on process steps</div>${affected.map(i=>`<span class="impact-chip" onclick="selectRiskNode(PROCESS_STEPS.find(x=>x.id==='${i.id}'))">→ ${i.label}</span>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Audit response</div><div class="risk-card">Test the central control once, then map the result to every relying system. A failed control should automatically raise the risk rating of all affected steps.</div></div><div class="risk-section"><div class="agent-grid"><button class="agent-btn" onclick="showDetail('${node.system}')"><span class="agent-icon">🛡️</span>Open controls</button><a class="agent-btn" href="audit_tracker.html?sys=${node.system}&area=overview"><span class="agent-icon">🎙️</span>Start walkthrough</a></div></div>`;
+  el.innerHTML=`<div class="lsp-header"><div class="lsp-type-badge" style="background:#7c3aed">CROSS-CUTTING SYSTEM</div><div class="lsp-title">${node.label}</div><div class="lsp-fn">${node.sub} · ${s.function}</div></div><div class="risk-section"><div class="risk-section-title">Concentration risk</div><div class="risk-card ${node.risk}">${risk}</div></div><div class="risk-section"><div class="risk-section-title">Knock-on process steps</div>${affected.map(i=>`<span class="impact-chip" onclick="selectRiskNode(PROCESS_STEPS.find(x=>x.id==='${i.id}'))">→ ${i.label}</span>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Audit response</div><div class="risk-card">Test the central control once, then map the result to every relying system. A failed control should automatically raise the risk rating of all affected steps.</div></div><div class="risk-section"><div class="risk-section-title">Agent access point</div>${renderAgentWorkspace(node)}</div>`;
 }
 
 /* ── Contact Connection Map ───────────────────────────────── */

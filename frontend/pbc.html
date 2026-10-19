@@ -287,10 +287,10 @@
     <div class="card">
       <div class="card-title">Step 1 — Prior-year PBC list (optional)</div>
       <div class="upload-zone" id="dropzone">
-        <input type="file" id="xlsx-input" accept=".xlsx,.xls" />
+        <input type="file" id="xlsx-input" accept=".xlsx" />
         <div class="upload-icon">📂</div>
         <div class="upload-label">Drop prior-year PBC.xlsx here</div>
-        <div class="upload-hint">or click to browse · .xlsx only · max 10 MB</div>
+        <div class="upload-hint">or click to browse · .xlsx only · max 5 MB</div>
         <div class="upload-name" id="file-name"></div>
       </div>
     </div>
@@ -404,6 +404,21 @@ const API_BASE = window.API_BASE || "http://localhost:8000";
 let xlsxB64 = null;       // base64 string from last successful generate
 let xlsxFilename = "";
 let uploadedFile = null;
+
+// Accept context from the Process & Risk map so the PBC agent starts with the
+// selected system and business process already described.
+const contextParams = new URLSearchParams(window.location.search);
+const contextSystem = contextParams.get("system");
+const contextProcess = contextParams.get("process");
+if (contextSystem || contextProcess) {
+  const systemLabel = contextSystem ? contextSystem.toUpperCase() : "the selected system";
+  const processLabel = contextProcess || "the selected business process";
+  document.getElementById("scope").value = `FY2025 IT Audit Scope — ACME Corp
+
+${systemLabel} supports the ${processLabel} process and is in scope for this year's audit.
+
+Generate PBC requests covering process risk points, relevant ITGC controls, interfaces, access, change management, and evidence needed to validate downstream impacts.`;
+}
 
 // ── API health check ─────────────────────────────────────────────────────────
 async function checkHealth() {

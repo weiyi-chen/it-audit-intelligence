@@ -31,6 +31,24 @@
     .ll-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
     .ll-line{width:22px;height:2px;flex-shrink:0}
 
+    /* ── Process & Risk Intelligence view ──────────── */
+    #risk-svg{display:none;flex:1;width:100%;min-height:0}
+    .risk-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 22px 0}
+    .risk-kpi{padding:10px;border-radius:8px;background:#141d2e;border:1px solid #1e2d45;text-align:center}
+    .risk-kpi strong{display:block;font-size:18px;color:#d0dce8}
+    .risk-kpi span{font-size:10px;color:#5a7090;text-transform:uppercase;letter-spacing:.4px}
+    .risk-section{padding:14px 22px 0}
+    .risk-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#4a86c8;margin-bottom:8px}
+    .risk-card{padding:10px 12px;margin-bottom:7px;border-radius:8px;background:#141d2e;border:1px solid #1e2d45;font-size:12px;color:#a0b8cc;line-height:1.45}
+    .risk-card.high{border-left:3px solid #ef4444}.risk-card.medium{border-left:3px solid #f59e0b}.risk-card.low{border-left:3px solid #22c55e}
+    .prp-chip{display:inline-flex;padding:3px 8px;margin:0 5px 5px 0;border-radius:12px;background:#30143f;border:1px solid #6b287d;color:#e9b8f4;font-size:10.5px;font-weight:700}
+    .impact-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;margin:0 5px 5px 0;border-radius:6px;background:#17243a;border:1px solid #294364;color:#8db9e8;font-size:11px;cursor:pointer}
+    .agent-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding-bottom:18px}
+    .agent-btn{display:flex;align-items:center;gap:8px;padding:9px;border:1px solid #2a3d55;background:#17243a;border-radius:8px;color:#b7cbe0;text-decoration:none;font-size:11px;font-weight:700;cursor:pointer}
+    .agent-btn:hover{background:#1e3060;border-color:#4a86c8}
+    .agent-icon{width:25px;height:25px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:#253c61}
+    @media(max-width:850px){body{height:auto;min-height:100vh;overflow:auto}.nav{padding:11px 14px;flex-wrap:wrap}.engagement{display:none}#view-landscape,#detail-main{flex-direction:column}#ls-network-col,#network-col{flex:0 0 62vh;border-right:none;border-bottom:1px solid #1e2d45}#ls-panel-col,#panel-col{min-height:52vh}#ls-toolbar{overflow-x:auto}.tb-sub{display:none}.risk-summary{grid-template-columns:repeat(3,1fr)}}
+
     /* ── Landscape right panel ──────────────────── */
     #ls-panel-col{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#111926}
     #ls-panel-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:14px;color:#3a5070;padding:40px 24px;text-align:center}
@@ -185,11 +203,13 @@
       <span class="tb-title">IT Landscape — ACME Corp</span>
       <span class="tb-sub">· 5 systems in scope</span>
       <button class="toggle-btn" id="contacts-toggle" onclick="toggleContacts()">👥 Stakeholders</button>
+      <button class="toggle-btn" id="risk-toggle" onclick="toggleRiskMap()">⚡ Process & Risk</button>
       <button class="toggle-btn" id="connmap-toggle" onclick="toggleConnectionMap()">🔗 Contact Map</button>
       <button class="toggle-btn" id="org-toggle" onclick="toggleOrgChart()">🏢 Org Chart</button>
       <span style="margin-left:auto;font-size:11px;color:#94a3b8" id="ls-hint">Click a system to explore</span>
     </div>
     <svg id="ls-svg"></svg>
+    <svg id="risk-svg"></svg>
     <svg id="conn-svg" style="display:none;flex:1;width:100%;min-height:0"></svg>
     <svg id="org-svg" style="display:none;flex:1;width:100%;min-height:0;overflow:visible"></svg>
     <div class="ls-legend" id="ls-legend-sys">
@@ -209,6 +229,14 @@
       <div class="ll-item"><div class="ll-dot" style="background:#4a86c8"></div> System</div>
       <div class="ll-item"><div class="ll-line" style="background:#4a6080;height:2px"></div> Covers system</div>
       <div class="ll-item" style="color:#94a3b8">Thicker edge = more areas covered</div>
+    </div>
+    <div class="ls-legend" id="ls-legend-risk" style="display:none">
+      <div class="ll-item"><div class="ll-dot" style="background:#ef4444"></div> High risk</div>
+      <div class="ll-item"><div class="ll-dot" style="background:#f59e0b"></div> Medium risk</div>
+      <div class="ll-item"><div class="ll-dot" style="background:#22c55e"></div> Low risk</div>
+      <div class="ll-item"><div class="ll-line" style="background:#4a86c8"></div> Process flow</div>
+      <div class="ll-item"><div class="ll-line" style="border-top:2px dashed #a855f7"></div> Supporting system</div>
+      <div class="ll-item" style="color:#94a3b8">Select a step to inspect risks, PRPs and agents</div>
     </div>
     <div class="ls-legend" id="ls-legend-org" style="display:none">
       <div class="ll-item"><div style="width:18px;height:12px;border-radius:3px;background:#2a3d55;border:1px solid #4a6080"></div> Unnamed / senior role</div>
@@ -384,6 +412,22 @@ const LS_EDGES = [
   ['sap',    'powerbi',    'financial data', false],
   ['oracle', 'powerbi',    'financial data', false],
 ];
+
+// End-to-end business process with risk, PRP, control and agent mappings.
+const PROCESS_STEPS = [
+  {id:'worker',order:1,label:'Worker master data',sub:'Hire / change / terminate',system:'workday',x:105,y:185,risk:'medium',risks:['Incomplete or unauthorised employee master-data changes','Terminated workers remain active in downstream systems'],prps:['HR master-data approval','Leaver effective-date accuracy'],controls:['HR approval workflow','Daily Workday → Azure AD reconciliation'],evidence:['Worker change report','Terminated-worker interface log'],downstream:['payroll','identity'],agent:'Scope Agent'},
+  {id:'payroll',order:2,label:'Payroll calculation',sub:'Gross-to-net processing',system:'workday',x:285,y:185,risk:'high',risks:['Unauthorised payroll configuration changes','Incomplete or inaccurate payroll calculation'],prps:['Payroll rule configuration','Exception review before release'],controls:['Four-eyes payroll approval','Payroll variance and exception review'],evidence:['Payroll sign-off','Exception report','Configuration audit log'],downstream:['posting'],agent:'Risk Agent'},
+  {id:'posting',order:3,label:'GL interface',sub:'Payroll journal posting',system:'oracle',x:465,y:185,risk:'high',risks:['Interface failure creates incomplete GL posting','Duplicate journal transmitted during retry'],prps:['Interface completeness','Duplicate prevention'],controls:['Record-count and value reconciliation','Failed-interface alert and reprocessing approval'],evidence:['Interface control totals','Job failure log','GL journal batch'],downstream:['close'],agent:'Evidence Agent'},
+  {id:'close',order:4,label:'Financial close',sub:'Reconcile and consolidate',system:'sap',x:645,y:185,risk:'high',risks:['Inappropriate privileged access alters financial data','Unapproved configuration or transport reaches production'],prps:['Privileged journal access','Transport approval','Legacy-to-SAP migration completeness'],controls:['Quarterly privileged access review','Segregated transport approval','Migration reconciliation'],evidence:['SAP role extract','Transport log','Migration reconciliation'],downstream:['reporting'],agent:'Control Agent'},
+  {id:'reporting',order:5,label:'Management reporting',sub:'Publish dashboards',system:'powerbi',x:825,y:185,risk:'medium',risks:['Reports use incomplete or stale financial data','Report logic changes are not independently reviewed'],prps:['Dataset refresh completeness','Report change governance'],controls:['Refresh monitoring','Certified dataset and report-owner approval'],evidence:['Refresh history','Dataset certification','Report change log'],downstream:[],agent:'Reporting Agent'},
+];
+
+const SUPPORT_NODES = [
+  {id:'identity',label:'Azure AD',sub:'SSO · MFA · JML',system:'azuread',x:285,y:365,risk:'high',targets:['worker','payroll','posting','close']},
+  {id:'change',label:'ServiceNow',sub:'Change approvals',system:'servicenow',x:645,y:365,risk:'medium',targets:['payroll','posting','close','reporting']},
+];
+
+const RISK_COLORS = {high:'#ef4444',medium:'#f59e0b',low:'#22c55e'};
 
 /* ═══════════════════════════════════════════════════
    DETAIL DATA (per in-scope system × 7 IT areas)
@@ -606,6 +650,7 @@ function areaLabel(a){ return a ? (AREAS[a]?.label || a) : 'Overview'; }
 ═══════════════════════════════════════════════════ */
 const appState = {
   showContacts: false,
+  showRiskMap: false,
   showConnMap: false,
   showOrgChart: false,
   view: 'landscape',
@@ -669,6 +714,14 @@ function switchDetailSystem(sysKey){
    CONTACTS TOGGLE — show/hide stakeholder overlay
 ═══════════════════════════════════════════════════ */
 function _closeLsSubViews(){
+  // close process & risk map
+  if(appState.showRiskMap){
+    appState.showRiskMap = false;
+    document.getElementById('risk-toggle').classList.remove('active');
+    document.getElementById('risk-svg').style.display = 'none';
+    document.getElementById('ls-legend-risk').style.display = 'none';
+    d3.select('#risk-svg').selectAll('*').remove();
+  }
   // close conn map
   if(appState.showConnMap){
     appState.showConnMap = false;
@@ -693,7 +746,7 @@ function _closeLsSubViews(){
 
 function toggleContacts(){
   // If any other sub-view active, close it first
-  if(appState.showConnMap || appState.showOrgChart) _closeLsSubViews();
+  if(appState.showRiskMap || appState.showConnMap || appState.showOrgChart) _closeLsSubViews();
   appState.showContacts = !appState.showContacts;
   const btn = document.getElementById('contacts-toggle');
   btn.classList.toggle('active', appState.showContacts);
@@ -703,11 +756,118 @@ function toggleContacts(){
   drawContactOverlay(appState.showContacts);
 }
 
+/* ── Process & Risk Intelligence Map ────────────────────────── */
+function toggleRiskMap(){
+  if(appState.showContacts){
+    drawContactOverlay(false); appState.showContacts=false;
+    document.getElementById('contacts-toggle').classList.remove('active');
+    document.getElementById('contacts-toggle').textContent='👥 Stakeholders';
+    document.getElementById('legend-contacts').style.display='none';
+    document.getElementById('legend-crosscontacts').style.display='none';
+  }
+  if(appState.showConnMap || appState.showOrgChart) _closeLsSubViews();
+
+  appState.showRiskMap = !appState.showRiskMap;
+  document.getElementById('risk-toggle').classList.toggle('active', appState.showRiskMap);
+  document.getElementById('ls-svg').style.display = appState.showRiskMap ? 'none' : '';
+  document.getElementById('risk-svg').style.display = appState.showRiskMap ? '' : 'none';
+  document.getElementById('ls-legend-sys').style.display = appState.showRiskMap ? 'none' : '';
+  document.getElementById('ls-legend-risk').style.display = appState.showRiskMap ? '' : 'none';
+  document.getElementById('ls-hint').textContent = appState.showRiskMap ? 'Click a process step to trace audit impact' : 'Click a system to explore';
+
+  if(appState.showRiskMap){
+    drawRiskMap();
+    showRiskOverview();
+  } else {
+    d3.select('#risk-svg').selectAll('*').remove();
+    document.getElementById('ls-panel-empty').style.display = 'flex';
+    document.getElementById('ls-panel-content').style.display = 'none';
+  }
+}
+
+function drawRiskMap(){
+  const svg = d3.select('#risk-svg');
+  svg.selectAll('*').remove();
+  svg.attr('viewBox','0 0 930 480').attr('preserveAspectRatio','xMidYMid meet');
+  const defs = svg.append('defs');
+  defs.append('marker').attr('id','risk-arrow').attr('markerWidth',8).attr('markerHeight',6).attr('refX',8).attr('refY',3).attr('orient','auto')
+    .append('polygon').attr('points','0 0, 8 3, 0 6').attr('fill','#4a86c8');
+  defs.append('filter').attr('id','risk-shadow').html('<feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="#000" flood-opacity=".28"/>');
+  const g = svg.append('g');
+
+  g.append('text').attr('x',40).attr('y',45).attr('fill','#d0dce8').attr('font-size',18).attr('font-weight',800).text('Hire-to-Report — Process & Risk Flow');
+  g.append('text').attr('x',40).attr('y',66).attr('fill','#4a6080').attr('font-size',11).text('Business steps, supporting systems, PRPs and downstream audit impact');
+
+  PROCESS_STEPS.slice(0,-1).forEach((step,i)=>{
+    const next=PROCESS_STEPS[i+1];
+    g.append('line').attr('x1',step.x+76).attr('y1',step.y).attr('x2',next.x-76).attr('y2',next.y)
+      .attr('stroke','#4a86c8').attr('stroke-width',2.5).attr('opacity',.7).attr('marker-end','url(#risk-arrow)');
+  });
+
+  SUPPORT_NODES.forEach(support=>{
+    support.targets.forEach(targetId=>{
+      const target=PROCESS_STEPS.find(step=>step.id===targetId);
+      if(!target) return;
+      g.append('path').attr('d',`M${support.x},${support.y-38} Q${(support.x+target.x)/2},${support.y-92} ${target.x},${target.y+48}`)
+        .attr('fill','none').attr('stroke','#a855f7').attr('stroke-width',1.2).attr('stroke-dasharray','5,5').attr('opacity',.28);
+    });
+  });
+
+  const steps=g.selectAll('.risk-step').data(PROCESS_STEPS).enter().append('g').attr('class','risk-step')
+    .attr('transform',d=>`translate(${d.x},${d.y})`).style('cursor','pointer').on('click',(_,d)=>selectRiskNode(d));
+  steps.append('rect').attr('x',-72).attr('y',-47).attr('width',144).attr('height',94).attr('rx',13)
+    .attr('fill','#141d2e').attr('stroke',d=>RISK_COLORS[d.risk]).attr('stroke-width',2).attr('filter','url(#risk-shadow)');
+  steps.append('circle').attr('cx',-52).attr('cy',-27).attr('r',10).attr('fill',d=>RISK_COLORS[d.risk]);
+  steps.append('text').attr('x',-52).attr('y',-27).attr('text-anchor','middle').attr('dominant-baseline','central').attr('fill','#fff').attr('font-size',9).attr('font-weight',800).text(d=>d.order);
+  steps.append('text').attr('x',-35).attr('y',-23).attr('fill','#d0dce8').attr('font-size',11.5).attr('font-weight',800).text(d=>d.label);
+  steps.append('text').attr('x',-56).attr('y',0).attr('fill','#5a7090').attr('font-size',9.5).text(d=>d.sub);
+  steps.append('rect').attr('x',-56).attr('y',14).attr('width',112).attr('height',19).attr('rx',9).attr('fill',d=>LS_SYSTEMS[d.system].color).attr('opacity',.85);
+  steps.append('text').attr('x',0).attr('y',24).attr('text-anchor','middle').attr('dominant-baseline','central').attr('fill','#fff').attr('font-size',9).attr('font-weight',700).text(d=>LS_SYSTEMS[d.system].short);
+
+  const support=g.selectAll('.support-node').data(SUPPORT_NODES).enter().append('g').attr('class','support-node')
+    .attr('transform',d=>`translate(${d.x},${d.y})`).style('cursor','pointer').on('click',(_,d)=>selectRiskNode(d));
+  support.append('rect').attr('x',-72).attr('y',-34).attr('width',144).attr('height',68).attr('rx',12).attr('fill','#1a1030').attr('stroke','#a855f7').attr('stroke-width',1.5).attr('stroke-dasharray','5,3');
+  support.append('text').attr('y',-5).attr('text-anchor','middle').attr('fill','#d8b4fe').attr('font-size',12).attr('font-weight',800).text(d=>d.label);
+  support.append('text').attr('y',14).attr('text-anchor','middle').attr('fill','#7c68a0').attr('font-size',9.5).text(d=>d.sub);
+  g.append('text').attr('x',40).attr('y',452).attr('fill','#3a5070').attr('font-size',10).text('Dashed relationships show cross-cutting controls that can create knock-on risk across multiple process steps.');
+}
+
+function showRiskOverview(){
+  const el=document.getElementById('ls-panel-content');
+  document.getElementById('ls-panel-empty').style.display='none'; el.style.display='flex';
+  const high=PROCESS_STEPS.filter(s=>s.risk==='high').length;
+  const prps=PROCESS_STEPS.reduce((n,s)=>n+s.prps.length,0);
+  el.innerHTML=`<div class="lsp-header"><div class="lsp-type-badge" style="background:#7c3aed">⚡ Process & Risk Intelligence</div><div class="lsp-title">Hire-to-Report risk map</div><div class="lsp-fn">Select a business-process step to see risks, PRPs, controls, evidence, downstream systems and linked audit agents.</div></div><div class="risk-summary"><div class="risk-kpi"><strong>${PROCESS_STEPS.length}</strong><span>Process steps</span></div><div class="risk-kpi"><strong style="color:#ef4444">${high}</strong><span>High risk</span></div><div class="risk-kpi"><strong style="color:#d8b4fe">${prps}</strong><span>PRPs mapped</span></div></div><div class="risk-section"><div class="risk-section-title">How to use this view</div><div class="risk-card">1. Select a process step.<br>2. Review inherent risks and PRPs.<br>3. Trace knock-on systems.<br>4. Launch the PBC or Walkthrough agent.</div></div>`;
+}
+
+function selectRiskNode(node){
+  d3.select('#risk-svg').selectAll('.risk-step rect,.support-node rect').attr('stroke-width',d=>d?.risk?2:1.5).attr('filter',null);
+  d3.select('#risk-svg').selectAll('.risk-step,.support-node').filter(d=>d.id===node.id).select('rect').attr('stroke-width',4).attr('filter','url(#risk-shadow)');
+  if(node.targets) return renderSupportRiskPanel(node);
+  renderRiskPanel(node);
+}
+
+function renderRiskPanel(step){
+  const s=LS_SYSTEMS[step.system];
+  const impacts=step.downstream.map(id=>PROCESS_STEPS.find(x=>x.id===id)||SUPPORT_NODES.find(x=>x.id===id)).filter(Boolean);
+  const contacts=contactsForSystem(step.system).slice(0,2);
+  const el=document.getElementById('ls-panel-content'); document.getElementById('ls-panel-empty').style.display='none'; el.style.display='flex';
+  el.innerHTML=`<div class="lsp-header"><div class="lsp-type-badge" style="background:${RISK_COLORS[step.risk]}">${step.risk.toUpperCase()} RISK</div><div class="lsp-title">${step.label}</div><div class="lsp-fn">${step.sub} · ${s.label}</div></div><div class="risk-section"><div class="risk-section-title">Key risks</div>${step.risks.map(r=>`<div class="risk-card ${step.risk}">${r}</div>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Process risk points (PRPs)</div>${step.prps.map(p=>`<span class="prp-chip">${p}</span>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Key controls</div>${step.controls.map(c=>`<div class="risk-card low">✓ ${c}</div>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Expected evidence</div>${step.evidence.map(e=>`<div class="risk-card">📎 ${e}</div>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Knock-on systems</div>${impacts.length?impacts.map(i=>`<span class="impact-chip" onclick="selectRiskNode(${i.targets?'SUPPORT_NODES':'PROCESS_STEPS'}.find(x=>x.id==='${i.id}'))">→ ${i.label}</span>`).join(''):'<span style="font-size:12px;color:#5a7090">End of mapped flow</span>'}</div><div class="risk-section"><div class="risk-section-title">Linked people & agents</div>${contacts.map(c=>`<div style="font-size:11px;color:#7a9ab8;margin-bottom:5px">${c.icon} ${c.name} · ${c.role}</div>`).join('')}<div class="agent-grid"><a class="agent-btn" href="pbc.html?system=${step.system}&process=${encodeURIComponent(step.label)}"><span class="agent-icon">📋</span>PBC Agent</a><a class="agent-btn" href="audit_tracker.html?sys=${step.system}&area=overview"><span class="agent-icon">🎙️</span>Walkthrough Agent</a><button class="agent-btn" onclick="showDetail('${step.system}')"><span class="agent-icon">🛡️</span>Control Agent</button><button class="agent-btn" onclick="renderRiskPanel(PROCESS_STEPS.find(x=>x.id==='${step.id}'))"><span class="agent-icon">⚡</span>${step.agent}</button></div></div>`;
+}
+
+function renderSupportRiskPanel(node){
+  const s=LS_SYSTEMS[node.system];
+  const affected=node.targets.map(id=>PROCESS_STEPS.find(x=>x.id===id)).filter(Boolean);
+  const risk=node.id==='identity'?'A failure in identity lifecycle, MFA or privileged access can affect every authenticated financial application.':'A weak change-approval workflow can permit unauthorised configuration or code changes across connected applications.';
+  const el=document.getElementById('ls-panel-content'); document.getElementById('ls-panel-empty').style.display='none'; el.style.display='flex';
+  el.innerHTML=`<div class="lsp-header"><div class="lsp-type-badge" style="background:#7c3aed">CROSS-CUTTING SYSTEM</div><div class="lsp-title">${node.label}</div><div class="lsp-fn">${node.sub} · ${s.function}</div></div><div class="risk-section"><div class="risk-section-title">Concentration risk</div><div class="risk-card ${node.risk}">${risk}</div></div><div class="risk-section"><div class="risk-section-title">Knock-on process steps</div>${affected.map(i=>`<span class="impact-chip" onclick="selectRiskNode(PROCESS_STEPS.find(x=>x.id==='${i.id}'))">→ ${i.label}</span>`).join('')}</div><div class="risk-section"><div class="risk-section-title">Audit response</div><div class="risk-card">Test the central control once, then map the result to every relying system. A failed control should automatically raise the risk rating of all affected steps.</div></div><div class="risk-section"><div class="agent-grid"><button class="agent-btn" onclick="showDetail('${node.system}')"><span class="agent-icon">🛡️</span>Open controls</button><a class="agent-btn" href="audit_tracker.html?sys=${node.system}&area=overview"><span class="agent-icon">🎙️</span>Start walkthrough</a></div></div>`;
+}
+
 /* ── Contact Connection Map ───────────────────────────────── */
 function toggleConnectionMap(){
   // close other sub-views & contacts overlay
   if(appState.showContacts){ drawContactOverlay(false); appState.showContacts=false; document.getElementById('contacts-toggle').classList.remove('active'); document.getElementById('contacts-toggle').textContent='👥 Stakeholders'; document.getElementById('legend-contacts').style.display='none'; document.getElementById('legend-crosscontacts').style.display='none'; }
-  if(appState.showOrgChart){ _closeLsSubViews(); }
+  if(appState.showRiskMap || appState.showOrgChart){ _closeLsSubViews(); }
 
   appState.showConnMap = !appState.showConnMap;
   const btn = document.getElementById('connmap-toggle');
@@ -865,6 +1025,7 @@ function toggleOrgChart(){
     document.getElementById('ls-legend-conn').style.display = 'none';
     d3.select('#conn-svg').selectAll('*').remove();
   }
+  if(appState.showRiskMap){ _closeLsSubViews(); }
 
   appState.showOrgChart = !appState.showOrgChart;
   const btn = document.getElementById('org-toggle');

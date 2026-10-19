@@ -33,6 +33,7 @@ The PBC generator is connected to a working, rate-limited public backend:
 - **Module B — IT Understanding Map**
   - Maps in-scope financial systems, business processes, stakeholders, vendors, data flows, and ITGC areas.
   - Includes an interactive IT landscape, system drill-down, stakeholder coverage map, and organisation chart.
+  - Adds a linked Process & Risk Intelligence view covering risks, PRPs, controls, evidence, knock-on systems, and audit-agent handoffs.
 
 - **Module C — Walkthrough Tracker**
   - Tracks stakeholder walkthrough questions, prior-year findings, new current-year questions, notes, and coverage progress.
@@ -81,7 +82,7 @@ pytest tests -q
 The suite covers scope parsing, checklist decisions, template generation,
 batch fallback behaviour, Excel round trips, graph behaviour, effective-date
 filtering, guidance retrieval, citation propagation, and deterministic sample
-size updates. The current suite has 159 passing tests.
+size updates. The current suite has 161 passing tests.
 
 ## Quick Start
 
